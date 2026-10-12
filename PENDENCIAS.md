@@ -80,6 +80,7 @@ Passo a passo em [backend_bot/README.md](backend_bot/README.md#deploy-vm-própri
 
 ## Feito
 
+- [x] 2026-10-12: Código no GitHub (privado): <https://github.com/SHAMartins/live-dos-dude>, sem segredos (varredura feita antes do push), LF forçado no `.gitattributes`
 - [x] 2026-10-12: **Executável do cliente** (PyInstaller, pasta + zip de 76 MB): já aponta para o backend de produção, opção "Iniciar com o Windows", `--diagnostico`; testado de ponta a ponta transmitindo uma janela
 - [x] 2026-10-12: **Fonte e qualidade na janela do cliente**: seletor de tela/janela estilo Go Live, resolução/FPS/bitrate, `/transmitir` com prioridade, "Aplicar agora" sem trocar o link; backend na VM atualizado; 39 + 64 testes
 - [x] 2026-10-12: **Sistema no ar**: bot e backend na OCI (`livedosdude-api.duckdns.org`), vídeo pelo LiveKit Cloud (ponte), primeira transmissão real assistida pelo link
