@@ -65,7 +65,7 @@ Passo a passo em [backend_bot/README.md](backend_bot/README.md#deploy-vm-própri
 - [ ] **[você]** Teste manual com o Discord real: `/parear` → digitar o código na janela → `/transmitir` → assistir → parar pela bandeja ([como rodar](cliente_desktop/README.md#rodar))
 - [ ] **[você]** Atualizar o Python para a última 3.13.x: o 3.13.0 tem um bug do Tk dentro de venvs (há um contorno no código, mas é melhor não depender dele)
 - [ ] **[você]** Se usar escala de tela 125%/150%, conferir se o cursor aparece no lugar certo (só testei em 100%)
-- [ ] **[você]** Subir o `dist/LiveDosDude-0.1.0-windows.zip` (76 MB) num Drive e mandar o link para quem vai transmitir
+- [ ] **[você]** Subir o `dist/LiveDosDude-0.1.0-instalador.exe` (53 MB) num Drive e mandar o link para quem vai transmitir
 - [ ] **[código]** (evolução) Assinatura digital do `.exe` (tira o aviso do SmartScreen; certificado é pago)
 - [ ] **[você]** Testar o som numa live real: tocar música/jogo **e** falar numa call do Discord; quem assiste deve ouvir só o jogo
 - [ ] **[código]** (evolução) Escolher de quais apps vem o som (hoje: tudo menos o Discord)
@@ -79,6 +79,7 @@ Passo a passo em [backend_bot/README.md](backend_bot/README.md#deploy-vm-própri
 
 ## Feito
 
+- [x] 2026-10-12: **Instalador e desinstalador** (Inno Setup, por usuário, sem administrador): testado em modo silencioso: instala, `--diagnostico` OK, transmite tela + som pelo app instalado, desinstala sem deixar pasta, atalho nem registro (e preserva o pareamento)
 - [x] 2026-10-12: **Som da transmissão sem as vozes do Discord**: loopback por processo do Windows excluindo o Discord, caixa "Transmitir o som do PC" no app, volume/mudo na página do espectador (salvo no navegador), `--diagnostico` confere o som; backend na VM atualizado; 45 + 69 testes
 - [x] 2026-10-12: Código no GitHub (privado): <https://github.com/SHAMartins/live-dos-dude>, sem segredos (varredura feita antes do push), LF forçado no `.gitattributes`
 - [x] 2026-10-12: **Executável do cliente** (PyInstaller, pasta + zip de 76 MB): já aponta para o backend de produção, opção "Iniciar com o Windows", `--diagnostico`; testado de ponta a ponta transmitindo uma janela

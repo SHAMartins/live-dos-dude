@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import ctypes
 import logging
+import os
 import queue
 import sys
 from logging.handlers import RotatingFileHandler
@@ -114,18 +115,25 @@ def _diagnostico() -> int:
     def som() -> str:
         import os
         import time
+        from concurrent.futures import ThreadPoolExecutor
         from cliente.media import audio
-        audio._ole32.CoInitializeEx(None, 0)
-        discord = audio.processo_discord()
-        sessao, dados = audio._Sessao(discord or os.getpid()), bytearray()
-        try:
-            inicio = time.perf_counter()
-            while time.perf_counter() - inicio < 0.3:
-                sessao.ler(dados, 10)
-        finally:
-            sessao.fechar()
-        excluido = f"sem o Discord (pid {discord})" if discord else "Discord fechado"
-        return f"loopback por processo ok, {len(dados) // audio.BYTES_POR_AMOSTRA} amostras em 0,3 s, {excluido}"
+
+        def capturar() -> str:
+            # Thread própria, como no app: o COM da thread principal é do dxcam/comtypes.
+            audio._ole32.CoInitializeEx(None, 0)
+            discord = audio.processo_discord()
+            sessao, dados = audio._Sessao(discord or os.getpid()), bytearray()
+            try:
+                inicio = time.perf_counter()
+                while time.perf_counter() - inicio < 0.3:
+                    sessao.ler(dados, 10)
+            finally:
+                sessao.fechar()
+            excluido = f"sem o Discord (pid {discord})" if discord else "Discord fechado"
+            return f"loopback por processo ok, {len(dados) // audio.BYTES_POR_AMOSTRA} amostras em 0,3 s, {excluido}"
+
+        with ThreadPoolExecutor(1) as executor:
+            return executor.submit(capturar).result(timeout=10)
 
     for nome, funcao in (("LiveKit", livekit_ffi), ("Interface (Tk)", tk), ("Cofre de credenciais", keyring_backend),
                          ("Telas", telas), ("Captura DXGI", dxgi), ("Captura de janela", janelas),
@@ -160,7 +168,12 @@ def main() -> None:
         sys.exit(_limpar_dados())
     if "--diagnostico" in sys.argv:
         ativar_dpi_awareness()
-        sys.exit(_diagnostico())
+        codigo = _diagnostico()
+        if sys.stdout is not None:
+            sys.stdout.flush()
+        # Sai direto, sem a limpeza do interpretador (que só atrasa). O comtypes do dxcam às vezes ainda
+        # imprime um "access violation" ao soltar objetos COM; não afeta o relatório nem o código de saída.
+        os._exit(codigo)
     _configurar_log()
     sistema.identificar_na_barra_de_tarefas()
     if not _instancia_unica():

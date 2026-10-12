@@ -43,17 +43,26 @@ e `cliente.log`. O token do PC fica no **Gerenciador de Credenciais do Windows**
 .venv/Scripts/python empacotamento/empacotar.py
 ```
 
-Gera `dist/LiveDosDude/LiveDosDude.exe` (pasta de ~190 MB) e **`dist/LiveDosDude-<versão>-windows.zip`**
-(~76 MB), que é o que se manda para os amigos. É uma pasta e não um `.exe` único de propósito: o arquivo
-único descompactaria ~200 MB a cada abertura; a pasta abre em ~1 s.
+Gera `dist/LiveDosDude/LiveDosDude.exe` (pasta de ~190 MB), `dist/LiveDosDude-<versão>-windows.zip`
+(~76 MB, versão portátil) e, se o [Inno Setup 6](https://jrsoftware.org/isinfo.php) estiver instalado
+(`winget install --id JRSoftware.InnoSetup -e`), **`dist/LiveDosDude-<versão>-instalador.exe`** (~53 MB),
+que é o que se manda para os amigos. É uma pasta e não um `.exe` único de propósito: o arquivo único
+descompactaria ~200 MB a cada abertura; a pasta abre em ~1 s.
 
-- Já vem apontando para `wss://livedosdude-api.duckdns.org`: o amigo extrai o zip, abre o
-  `LiveDosDude.exe` e só digita o código do `/parear`.
+- Já vem apontando para `wss://livedosdude-api.duckdns.org`: o amigo instala, abre e só digita o código
+  do `/parear`.
+- **Instalador** ([empacotamento/instalador.iss](empacotamento/instalador.iss)): instala só para o usuário,
+  sem pedir administrador, em `%LOCALAPPDATA%\Programs\LiveDosDude`. Cria o atalho no Menu Iniciar e
+  oferece atalho na área de trabalho e "Iniciar com o Windows". Instalar uma versão nova por cima atualiza
+  a anterior. Se o app estiver aberto, pede para fechá-lo.
+- **Desinstalar** por *Configurações → Aplicativos → Live dos Dude*: tira o app, os atalhos e o
+  "Iniciar com o Windows", e pergunta se apaga também as configurações e o pareamento (padrão: não, para
+  reinstalar sem `/parear`).
 - **Aviso do Windows na primeira vez** ("O Windows protegeu o computador"): o executável não tem
   assinatura digital (certificado pago). É só clicar em *Mais informações → Executar assim mesmo*.
 - **Iniciar com o Windows:** caixa na seção *Conexão* da janela (só no executável; grava em
   `HKCU\...\Run`, sem precisar de administrador).
-- **`LiveDosDude.exe --diagnostico`** confere LiveKit, Tk, cofre de credenciais, capturas e bandeja e
+- **`LiveDosDude.exe --diagnostico`** confere LiveKit, Tk, cofre de credenciais, capturas, bandeja e som e
   grava o resultado em `%APPDATA%\LiveDosDude\diagnostico.txt`. É a primeira coisa a pedir se algo não
   funcionar no PC de um amigo.
 - O Discord não aceita anexos desse tamanho na conta grátis: distribua por Google Drive, OneDrive ou similar.
