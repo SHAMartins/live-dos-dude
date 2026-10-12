@@ -1,0 +1,21 @@
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.env
+*.sqlite3
+*.db
+.pytest_cache/
+dist/
+build/
+
+# Backend
+backend_bot/dados/
+.token_cliente_falso
+
+# Segredos locais
+.duckdns_token
+.livekit_cloud
+
+# Gerado pelo empacotar.py
+cliente_desktop/empacotamento/versao.txt

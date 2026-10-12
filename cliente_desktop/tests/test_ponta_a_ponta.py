@@ -1,0 +1,140 @@
+"""Tudo de verdade: backend + cliente + captura da tela + LiveKit local, e um espectador assistindo.
+
+Precisa do LiveKit de dev (infra_sfu/dev) e de uma sessão de desktop do Windows.
+"""
+
+from __future__ import annotations
+
+import asyncio
+import socket
+import sys
+
+import pytest
+from livekit import api, rtc
+
+from app.services.transmissao import PedidoTransmissao
+from auxiliares import FULANO, parear
+from cliente.estado import Estado
+from cliente.media.captura import ThreadMidia
+from cliente.media.cursor import ativar_dpi_awareness
+from cliente.media.escala import tamanho_de_saida
+from cliente.media.publicador import Publicador
+
+pytestmark = [pytest.mark.livekit, pytest.mark.tela]
+
+
+def _livekit_no_ar() -> bool:
+    try:
+        with socket.create_connection(("127.0.0.1", 7880), timeout=0.5):
+            return True
+    except OSError:
+        return False
+
+
+if sys.platform != "win32" or not _livekit_no_ar():
+    pytest.skip("precisa do Windows e do LiveKit local em localhost:7880", allow_module_level=True)
+
+
+@pytest.fixture
+def midia():
+    ativar_dpi_awareness()
+    m = ThreadMidia()
+    yield m
+    m.fechar()
+
+
+async def test_transmitir_pelo_backend_e_um_espectador_recebe_a_tela(backend, criar_cliente, midia):
+    publicador = Publicador(midia)
+    cliente = criar_cliente(publicador=publicador)
+    await parear(backend, cliente)
+    largura_tela, altura_tela, _ = await asyncio.wrap_future(midia.preparar())
+    esperado = tamanho_de_saida(largura_tela, altura_tela, 1280, 720)
+
+    sessao = await backend.servico.transmitir(FULANO, PedidoTransmissao("e2e", "720p", 30, 2500, "vp8"))
+    snapshot = await cliente.esperar(Estado.TRANSMITINDO)
+    assert snapshot.resolucao == esperado and snapshot.captura == "dxgi"
+
+    # Espectador entra pelo link com chave (o mesmo que o bot posta) e conta os quadros que chegam.
+    acesso = await backend.servico.acesso_por_chave(sessao.chave_espectador)
+    url, token = acesso.livekit_url, acesso.token
+    espectador = rtc.Room()
+    recebida: asyncio.Future[rtc.Track] = asyncio.get_running_loop().create_future()
+    espectador.on("track_subscribed", lambda track, *_: recebida.done() or recebida.set_result(track))
+    await espectador.connect(url, token)
+    try:
+        track = await asyncio.wait_for(recebida, 10)
+        quadros, dimensoes = 0, set()
+        stream = rtc.VideoStream(track)
+        async with asyncio.timeout(10):
+            async for evento in stream:
+                quadros += 1
+                dimensoes.add((evento.frame.width, evento.frame.height))
+                if quadros >= 30:
+                    break
+        await stream.aclose()
+        assert esperado in dimensoes
+
+        # A restrição do projeto, verificada no encoder de verdade.
+        saida = next(s.outbound_rtp.outbound for s in await publicador.track.get_stats()
+                     if s.WhichOneof("stats") == "outbound_rtp")
+        assert saida.encoder_implementation == "libvpx"
+        assert not saida.power_efficient_encoder
+    finally:
+        await espectador.disconnect()
+
+    assert (await backend.servico.parar(FULANO)).confirmado
+    await cliente.esperar(Estado.ONLINE)
+    async with api.LiveKitAPI("http://localhost:7880", backend.config.livekit_api_key,
+                              backend.config.livekit_api_secret.get_secret_value()) as lk:
+        async with asyncio.timeout(5):
+            while True:
+                resposta = await lk.room.list_participants(api.ListParticipantsRequest(room="e2e"))
+                if f"pc-{FULANO.discord_id}" not in {p.identity for p in resposta.participants}:
+                    break
+                await asyncio.sleep(0.2)
+    assert (await backend.repo.sessao(sessao.id)).estado == "encerrada"
+
+
+async def test_aplicar_agora_troca_tela_por_janela_e_o_espectador_continua(backend, criar_cliente, midia):
+    from cliente.media import fontes
+
+    janelas = [j for j in fontes.listar_janelas() if not fontes.janela_minimizada(j.hwnd) and j.largura >= 400]
+    if not janelas:
+        pytest.skip("nenhuma janela visível para capturar")
+    janela = max(janelas, key=lambda j: j.largura * j.altura)
+
+    publicador = Publicador(midia)
+    cliente = criar_cliente(publicador=publicador, resolucao="720p", fps=30, bitrate_kbps=2000)
+    await parear(backend, cliente)
+    sessao = await backend.servico.transmitir(FULANO, PedidoTransmissao("e2e-troca"))
+    await cliente.esperar(Estado.TRANSMITINDO)
+
+    acesso = await backend.servico.acesso_por_chave(sessao.chave_espectador)
+    espectador = rtc.Room()
+    tracks: asyncio.Queue[rtc.Track] = asyncio.Queue()
+    espectador.on("track_subscribed", lambda track, *_: tracks.put_nowait(track))
+    await espectador.connect(acesso.livekit_url, acesso.token)
+
+    async def contar_quadros(track: rtc.Track, quantos: int) -> set[tuple[int, int]]:
+        dimensoes, stream = set(), rtc.VideoStream(track)
+        async with asyncio.timeout(10):
+            async for evento in stream:
+                dimensoes.add((evento.frame.width, evento.frame.height))
+                quantos -= 1
+                if quantos <= 0:
+                    break
+        await stream.aclose()
+        return dimensoes
+
+    try:
+        assert await contar_quadros(await asyncio.wait_for(tracks.get(), 10), 15)
+        # Troca para a janela com a transmissão no ar: mesma sessão, mesmo link.
+        cliente.controlador.config.fonte = janela.como_fonte()
+        await cliente.controlador.aplicar_configuracao()
+        assert cliente.snapshots[-1].captura == "janela"
+        assert await contar_quadros(await asyncio.wait_for(tracks.get(), 10), 15)
+        assert cliente.controlador.sessao_id == sessao.id
+        assert (await backend.servico.acesso_por_chave(sessao.chave_espectador)) is not None  # link ainda vale
+    finally:
+        await espectador.disconnect()
+    assert (await backend.servico.parar(FULANO)).confirmado

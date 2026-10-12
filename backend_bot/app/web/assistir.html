@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="referrer" content="no-referrer">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="theme-color" content="#0e1013">
+  <title>{{ titulo }}</title>
+  <meta property="og:title" content="{{ titulo }}">
+  <meta property="og:description" content="{{ resumo }}">
+  <meta property="og:site_name" content="Live dos Dude">
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="/static/assistir.css">
+  <script src="{{ livekit_js }}" integrity="{{ livekit_js_sri }}" crossorigin="anonymous" defer></script>
+  <script src="/static/assistir.js" defer></script>
+</head>
+<body>
+  <header class="barra">
+    <span class="selo" id="selo" hidden>Ao vivo</span>
+    <div class="identificacao">
+      <span class="sala" id="sala">Live dos Dude</span>
+      <span class="transmissor" id="transmissor"></span>
+    </div>
+    <span class="espectadores" id="espectadores" hidden>
+      <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2" d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="2"/></svg>
+      <span id="contagem">1</span>
+    </span>
+    <button class="botao-icone" id="tela-cheia" type="button" title="Tela cheia (F)" aria-label="Tela cheia">
+      <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>
+    </button>
+  </header>
+  <div class="area">
+    <main class="palco" id="palco" aria-label="Transmissões"></main>
+    <section class="aviso" id="aviso" role="status" aria-live="polite">
+      <div class="girando" id="girando" aria-hidden="true"></div>
+      <h1 id="aviso-titulo">Conectando…</h1>
+      <p id="aviso-texto"></p>
+      <button class="botao" id="tentar" type="button" hidden>Tentar de novo</button>
+    </section>
+  </div>
+</body>
+</html>

@@ -1,0 +1,34 @@
+# Configuração LOCAL. As chaves abaixo são públicas, só para desenvolvimento.
+port: 7880
+
+rtc:
+  tcp_port: 7881
+  # UDP mux: toda a mídia em uma porta só, fácil de mapear no Docker.
+  udp_port: 7882
+  # O container anuncia 127.0.0.1, que o Docker Desktop repassa para ele.
+  node_ip: 127.0.0.1
+  use_external_ip: false
+
+room:
+  auto_create: true
+  empty_timeout: 300
+  departure_timeout: 20
+  enabled_codecs:
+    - mime: audio/opus
+    - mime: video/vp8
+    - mime: video/h264
+
+keys:
+  devkey: devsecret_local_apenas_para_testes_0123456789
+
+# Eventos para o backend rodando no Windows (fora do Docker), na porta 8010 para não
+# colidir com outros serviços na 8000: rode o backend local com PORTA=8010 para recebê-los.
+# Com o backend desligado, o LiveKit só registra no log que não conseguiu entregar.
+webhook:
+  api_key: devkey
+  urls:
+    - http://host.docker.internal:8010/livekit/webhook
+
+logging:
+  level: info
+  pion_level: error

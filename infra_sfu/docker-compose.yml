@@ -1,0 +1,43 @@
+# SFU de produção (VM Ubuntu na OCI).
+#
+# Os dois serviços usam network_mode: host:
+#   - o LiveKit precisa anunciar o IP público real nos candidatos ICE e ouvir
+#     uma faixa grande de portas UDP; publicar 10 mil portas pelo proxy do
+#     Docker é lento e inútil.
+#   - sem portas publicadas, o Docker não mexe no iptables, então as regras
+#     abertas por scripts/setup_host.sh são as únicas que valem.
+#
+# Segredos e domínio vêm do arquivo .env (veja .env.example).
+
+name: live-sfu
+
+services:
+  livekit:
+    image: livekit/livekit-server:v1.13.9
+    command: --config /etc/livekit.yaml
+    restart: unless-stopped
+    network_mode: host
+    environment:
+      # Formato exigido pelo LiveKit: "<api_key>: <api_secret>"
+      LIVEKIT_KEYS: "${LIVEKIT_API_KEY:?defina LIVEKIT_API_KEY no .env}: ${LIVEKIT_API_SECRET:?defina LIVEKIT_API_SECRET no .env}"
+    volumes:
+      - ./livekit.yaml:/etc/livekit.yaml:ro
+
+  caddy:
+    # Termina o TLS (Let's Encrypt automático) e repassa o WebSocket de
+    # sinalização para o LiveKit em localhost:7880. A mídia não passa aqui.
+    image: caddy:2.11.7-alpine
+    restart: unless-stopped
+    network_mode: host
+    environment:
+      LIVEKIT_DOMAIN: ${LIVEKIT_DOMAIN:?defina LIVEKIT_DOMAIN no .env}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - livekit
+
+volumes:
+  caddy_data:
+  caddy_config:

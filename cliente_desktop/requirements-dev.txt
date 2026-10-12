@@ -1,0 +1,9 @@
+-r requirements.txt
+
+# Testes
+pytest>=9,<10
+pytest-asyncio>=1.4,<2
+pytest-timeout>=2.3,<3
+
+# Os testes de integração sobem o backend real
+-r ../backend_bot/requirements.txt

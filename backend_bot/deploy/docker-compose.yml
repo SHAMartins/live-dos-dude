@@ -1,0 +1,44 @@
+# Backend em produção (VM própria, separada da do LiveKit).
+#
+#   docker compose up -d --build
+#
+# network_mode: host nos dois serviços, como na VM do LiveKit: o backend escuta só em
+# 127.0.0.1:8000 e o Caddy é o único exposto (80/443), com as portas abertas pelo
+# setup_host.sh (perfil "backend").
+
+name: live-backend
+
+services:
+  backend:
+    build: ..
+    image: live-dos-dude-backend:latest
+    restart: unless-stopped
+    network_mode: host
+    env_file: .env
+    environment:
+      HOST: 127.0.0.1
+      PORTA: "8000"
+      BANCO: /srv/dados/backend.sqlite3
+    volumes:
+      - dados:/srv/dados
+    # A E2.1.Micro tem 1 GB: o backend usa ~100 MB; o limite impede que um vazamento derrube a VM.
+    mem_limit: 384m
+    stop_grace_period: 15s
+
+  caddy:
+    image: caddy:2.11.7-alpine
+    restart: unless-stopped
+    network_mode: host
+    environment:
+      API_DOMAIN: ${API_DOMAIN:?defina API_DOMAIN no .env}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - backend
+
+volumes:
+  dados:
+  caddy_data:
+  caddy_config:

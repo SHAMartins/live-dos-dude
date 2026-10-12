@@ -1,0 +1,9 @@
+# LF em todo arquivo de texto, em qualquer máquina: scripts e configs rodam no Linux das VMs.
+* text=auto eol=lf
+*.ico binary
+
+# Scripts e configs executados no Linux precisam de LF, mesmo editados no Windows.
+*.sh      text eol=lf
+*.yml     text eol=lf
+*.yaml    text eol=lf
+Caddyfile text eol=lf

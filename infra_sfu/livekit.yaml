@@ -1,0 +1,44 @@
+# Configuração do LiveKit para produção.
+# As chaves NÃO ficam aqui: chegam pela variável LIVEKIT_KEYS (docker-compose.yml + .env).
+
+# Sinalização (HTTP/WebSocket). Só o Caddy acessa esta porta; ela não é
+# liberada no firewall.
+port: 7880
+
+rtc:
+  # ICE sobre TCP: fallback para redes que bloqueiam UDP.
+  tcp_port: 7881
+  # Mídia (RTP/ICE sobre UDP). Precisa estar aberta na Security List da OCI
+  # e no iptables da VM.
+  port_range_start: 50000
+  port_range_end: 60000
+  # A VM da OCI só enxerga o IP privado (NAT 1:1). Isso faz o LiveKit
+  # descobrir o IP público via STUN e anunciá-lo nos candidatos ICE.
+  use_external_ip: true
+  enable_loopback_candidate: false
+
+room:
+  auto_create: true
+  # Fecha a sala 5 min depois de criada se ninguém entrar.
+  empty_timeout: 300
+  # Mantém a sala por 20 s depois que o último sai (cobre reconexões rápidas
+  # do cliente desktop sem derrubar os espectadores).
+  departure_timeout: 20
+  # Só os codecs que o cliente codifica por software. Remove VP9/AV1, que
+  # pesariam demais na CPU do transmissor.
+  enabled_codecs:
+    - mime: audio/opus
+    - mime: video/vp8
+    - mime: video/h264
+
+logging:
+  level: info
+  pion_level: error
+
+# Webhook para o backend (outra VM): queda do PC e contagem de espectadores.
+# Descomente depois do deploy do backend. A api_key é o IDENTIFICADOR (não o secret)
+# do par que está no .env; o LiveKit assina cada evento com o secret correspondente.
+# webhook:
+#   api_key: <LIVEKIT_API_KEY>
+#   urls:
+#     - https://api.seudominio.com/livekit/webhook

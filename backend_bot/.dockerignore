@@ -1,0 +1,5 @@
+# Só o necessário para rodar: app/ e requirements.txt
+*
+!app/
+!requirements.txt
+**/__pycache__

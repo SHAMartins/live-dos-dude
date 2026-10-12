@@ -1,0 +1,20 @@
+# Backend: Bot Discord + API de sinalização (mesmo processo, mesmo event loop asyncio)
+# Python 3.13+ (exigido pelo Quart 0.23)
+
+# Bot
+discord.py>=2.7,<3
+
+# API HTTP + WebSocket assíncrona (API compatível com Flask, roda no loop do discord.py)
+quart>=0.23,<1
+hypercorn>=0.18,<1
+
+# Persistência assíncrona (SQLite sem bloquear o event loop)
+aiosqlite>=0.22,<1
+
+# Geração de tokens JWT de acesso às salas do LiveKit (server SDK)
+livekit-api>=1.2,<2
+
+# Configuração e validação das mensagens do protocolo
+pydantic>=2.14,<3
+pydantic-settings>=2.15,<3
+python-dotenv>=1.0,<2

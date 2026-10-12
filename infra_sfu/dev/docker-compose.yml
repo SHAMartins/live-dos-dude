@@ -1,0 +1,23 @@
+# LiveKit local para desenvolvimento (Docker Desktop no Windows).
+#
+#   docker compose -f infra_sfu/dev/docker-compose.yml up -d
+#
+# Diferenças em relação à produção:
+#   - portas mapeadas (network_mode: host não funciona no Docker Desktop);
+#   - mídia em UMA porta UDP (7882) em vez da faixa 50000-60000;
+#   - sem TLS: ws://localhost:7880;
+#   - chaves de dev fixas no livekit.yaml (nunca use em produção).
+
+name: live-sfu-dev
+
+services:
+  livekit:
+    image: livekit/livekit-server:v1.13.9
+    command: --config /etc/livekit.yaml
+    restart: unless-stopped
+    ports:
+      - "7880:7880"       # sinalização
+      - "7881:7881"       # ICE/TCP
+      - "7882:7882/udp"   # mídia
+    volumes:
+      - ./livekit.yaml:/etc/livekit.yaml:ro

@@ -1,0 +1,6 @@
+# Sem e-mail de ACME: o Let's Encrypt não manda mais avisos de expiração (desde 2025)
+# e o Caddy renova sozinho.
+# Sinalização do LiveKit (wss://). O Caddy faz o upgrade de WebSocket sozinho.
+{$LIVEKIT_DOMAIN} {
+	reverse_proxy localhost:7880
+}

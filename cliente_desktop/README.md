@@ -1,0 +1,126 @@
+# Cliente desktop
+
+Fica na bandeja do Windows, conectado ao backend. Quando chega o `/transmitir`, captura a
+tela, codifica **só na CPU** e publica no LiveKit. Protocolo: [docs/protocolo.md](../docs/protocolo.md).
+
+```
+thread principal  janela (customtkinter)  ── lê o PainelEstado a cada 250 ms
+thread "bandeja"  ícone (pystray)         ── cliques viram pedidos para as outras threads
+thread "asyncio"  Controlador             ── WebSocket do backend + sala do LiveKit
+thread "midia"    ThreadMidia             ── captura → reduz → cursor → encoder, no fps pedido
+```
+
+## Rodar
+
+No PowerShell, dentro de `cliente_desktop/`:
+
+```bash
+python -m venv .venv
+```
+
+```bash
+.venv/Scripts/python -m pip install -r requirements-dev.txt
+```
+
+```bash
+.venv/Scripts/python -m cliente
+```
+
+Na primeira vez a janela abre pedindo o código: rode `/parear` no Discord e digite-o. Depois
+disso o app abre direto na bandeja e reconecta sozinho. Fechar a janela **não** encerra o
+app; para sair, use *Sair* na janela ou no menu da bandeja.
+
+Arquivos em `%APPDATA%\LiveDosDude\`: `config.json` (endereço do backend, nome do PC, monitor)
+e `cliente.log`. O token do PC fica no **Gerenciador de Credenciais do Windows**, nunca em arquivo.
+
+## Executável para distribuir
+
+```bash
+.venv/Scripts/python -m pip install -r requirements-build.txt
+```
+
+```bash
+.venv/Scripts/python empacotamento/empacotar.py
+```
+
+Gera `dist/LiveDosDude/LiveDosDude.exe` (pasta de ~190 MB) e **`dist/LiveDosDude-<versão>-windows.zip`**
+(~76 MB), que é o que se manda para os amigos. É uma pasta e não um `.exe` único de propósito: o arquivo
+único descompactaria ~200 MB a cada abertura; a pasta abre em ~1 s.
+
+- Já vem apontando para `wss://livedosdude-api.duckdns.org`: o amigo extrai o zip, abre o
+  `LiveDosDude.exe` e só digita o código do `/parear`.
+- **Aviso do Windows na primeira vez** ("O Windows protegeu o computador"): o executável não tem
+  assinatura digital (certificado pago). É só clicar em *Mais informações → Executar assim mesmo*.
+- **Iniciar com o Windows:** caixa na seção *Conexão* da janela (só no executável; grava em
+  `HKCU\...\Run`, sem precisar de administrador).
+- **`LiveDosDude.exe --diagnostico`** confere LiveKit, Tk, cofre de credenciais, capturas e bandeja e
+  grava o resultado em `%APPDATA%\LiveDosDude\diagnostico.txt`. É a primeira coisa a pedir se algo não
+  funcionar no PC de um amigo.
+- O Discord não aceita anexos desse tamanho na conta grátis: distribua por Google Drive, OneDrive ou similar.
+
+## O que transmitir e com qual qualidade
+
+Na janela, a seção **Transmissão** guarda os padrões deste PC:
+
+- **Fonte:** *Escolher…* abre um seletor com miniaturas (como o Go Live do Discord). Na aba **Telas**, um
+  monitor inteiro (captura DXGI). Na aba **Aplicativos**, uma janela específica, capturada mesmo coberta por
+  outras (Windows Graphics Capture, cursor incluído). A janela é reencontrada pelo programa + título
+  quando o app reinicia.
+- **Resolução** (480p, 720p, 1080p ou *Nativa*), **FPS** (15, 30, 60) e **bitrate** (500–8000 kbps, com sugestão).
+- **Prioridade:** o que for digitado no `/transmitir` vale naquela vez; o resto vem daqui. O Discord
+  mostra os valores realmente usados.
+- **Com a transmissão no ar**, mudar algo mostra **Aplicar agora**: a track é republicada (~1 s de vídeo
+  parado) e **o link dos espectadores continua o mesmo**.
+
+Limitações da captura de janela (são da API do Windows; valem igualmente para o Discord):
+no Windows 10 uma **borda amarela** aparece em volta da janela, só na sua tela; janela **minimizada**
+congela o vídeo até ser restaurada (o app avisa); janela **fechada** encerra a transmissão; conteúdo com
+**DRM** e alguns jogos com anti-cheat aparecem pretos; redimensionar a janela coloca faixas pretas em vez
+de distorcer.
+
+## Testes
+
+```bash
+.venv/Scripts/python -m pytest
+```
+
+42 testes. Os de integração sobem o **backend real** (`../backend_bot`). Os marcados como `tela`
+capturam a sua tela, e o ponta a ponta (`livekit`) precisa do LiveKit local
+(`docker compose -f infra_sfu/dev/docker-compose.yml up -d`). Sem ele, é pulado.
+
+## Decisões da mídia (todas medidas nesta máquina, tela 1920x1080)
+
+| Etapa | Escolha | Por quê |
+|---|---|---|
+| Captura | **DXGI Desktop Duplication** (dxcam), com GDI (mss) de reserva | DXGI: ~3 ms/quadro. GDI: ~20 ms, limitado a ~45 fps. A Graphics Capture foi descartada: no Windows 10 desenha uma borda amarela que não dá para desligar e traz 113 MB de OpenCV junto |
+| Tela parada | A DXGI repete o último quadro | Sem quadros novos o encoder para, e quem entra na sala vê tela preta até algo mudar |
+| Redução | OpenCV `INTER_AREA`, 2 threads | 13 ms de CPU por quadro, contra 40 ms do Pillow. Com as 12 threads padrão o tempo cai, mas gasta 19 ms de CPU que o encoder precisa |
+| Cursor | Desenhado por cima via Win32 (`DrawIconEx` sobre fundo preto e branco) | Nem a DXGI nem o GDI incluem o cursor. Suporta sombra (alfa) e cursores que invertem a cor (I-beam) |
+| Encode | `ENCODER_BACKEND_SOFTWARE`, sem simulcast | Restrição do projeto. O teste ponta a ponta confirma `libvpx` e `power_efficient_encoder=false` |
+| Entrega | `VideoFrame` de um array 1D | Com array 3D o SDK copia o quadro inteiro de novo |
+
+Custo da captura (sem contar o encode), com o vídeo indo de fato para um `VideoSource`:
+
+| Saída | ms por quadro | CPU da thread de mídia |
+|---|---|---|
+| 1280x720 @ 30 | 13,8 | 60% de um núcleo |
+| 1280x720 @ 60 | 13,2 | 121% |
+| 1920x1080 @ 60 (nativo, sem redução) | 11,9 | 67% |
+
+Transmitir na resolução nativa da tela sai mais barato que reduzir.
+
+## Estrutura
+
+| Caminho | Responsabilidade |
+|---|---|
+| `cliente/__main__.py` | Monta as threads, impede duas instâncias (mutex), log em arquivo |
+| `cliente/conexao.py` | WebSocket: handshake, reconexão com backoff, códigos 1012/4001-4003 |
+| `cliente/controlador.py` | `ack` imediato, iniciar/parar, parada local, queda da mídia, estado exibido |
+| `cliente/media/captura.py` | Fontes DXGI/GDI/janela e o laço de captura na thread de mídia |
+| `cliente/media/fontes.py` | Lista telas e janelas, miniaturas, reencontra a janela salva |
+| `cliente/ui/transmissao.py` | Painel de fonte/qualidade e o seletor estilo Go Live |
+| `cliente/media/escala.py` | Encaixe na resolução pedida (sem distorcer, sem aumentar) e redução |
+| `cliente/media/cursor.py` | Cursor do Windows desenhado no quadro |
+| `cliente/media/publicador.py` | Sala do LiveKit e publicação da track de tela |
+| `cliente/ui/` | Janela, bandeja e ícones por estado |
+| `cliente/protocolo.py` | Espelho do protocolo do backend (um teste garante que não divergem) |

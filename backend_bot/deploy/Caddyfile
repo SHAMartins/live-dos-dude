@@ -1,0 +1,6 @@
+# Sem e-mail de ACME: o Let's Encrypt não manda mais avisos de expiração (desde 2025)
+# e o Caddy renova sozinho.
+# API, WebSocket dos PCs (/ws/cliente), página do espectador e webhook do LiveKit.
+{$API_DOMAIN} {
+	reverse_proxy 127.0.0.1:8000
+}

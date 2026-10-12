@@ -1,0 +1,4 @@
+# Ferramentas de teste do SFU (rodam no seu PC, não na VM)
+livekit>=1.1.20,<2
+livekit-api>=1.2,<2
+numpy>=2.5,<3

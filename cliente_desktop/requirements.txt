@@ -1,0 +1,29 @@
+# Cliente desktop: bandeja + captura de tela + publicação no LiveKit
+# Python 3.13+ no Windows 10/11
+
+# SDK de tempo real do LiveKit (libwebrtc via Rust FFI; encode VP8/H.264 por software)
+livekit>=1.1.20,<2
+
+# Conexão persistente com o backend (cliente WebSocket asyncio)
+websockets>=17,<18
+
+# Captura: DXGI Desktop Duplication (~3 ms/quadro em 1080p) com GDI (mss) de reserva
+dxcam>=0.3,<0.4
+mss>=10.2,<11
+numpy>=2.5,<3
+# Redimensionamento: INTER_AREA a 13 ms/quadro, contra 40 ms do Pillow (1080p -> 720p).
+# opencv-python (e não o -headless): é o que o windows-capture exige; dois pacotes de cv2 brigariam.
+opencv-python>=5,<6
+# Captura de janela específica (Windows Graphics Capture), como o Go Live do Discord
+windows-capture>=2.0.1,<3
+
+# Bandeja, janela e ícones
+pystray>=0.19.5,<1
+Pillow>=12,<13
+customtkinter>=6,<7
+
+# Token do PC guardado no Gerenciador de Credenciais do Windows
+keyring>=25,<26
+
+# Mensagens do protocolo
+pydantic>=2.14,<3
