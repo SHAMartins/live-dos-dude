@@ -26,6 +26,12 @@
       <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2" d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="2"/></svg>
       <span id="contagem">1</span>
     </span>
+    <div class="volume" id="volume" hidden>
+      <button class="botao-icone" id="mudo" type="button" title="Silenciar (M)" aria-label="Silenciar" aria-pressed="false">
+        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M4 9h4l5-4v14l-5-4H4z"/><path class="ondas" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/><path class="x" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" d="m16 9 6 6m0-6-6 6"/></svg>
+      </button>
+      <input type="range" id="volume-nivel" min="0" max="100" step="1" value="100" aria-label="Volume">
+    </div>
     <button class="botao-icone" id="tela-cheia" type="button" title="Tela cheia (F)" aria-label="Tela cheia">
       <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>
     </button>
@@ -38,6 +44,10 @@
       <p id="aviso-texto"></p>
       <button class="botao" id="tentar" type="button" hidden>Tentar de novo</button>
     </section>
+    <button class="ativar-som" id="ativar-som" type="button" hidden>
+      <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M4 9h4l5-4v14l-5-4H4z"/><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/></svg>
+      Clique para ativar o som
+    </button>
   </div>
 </body>
 </html>

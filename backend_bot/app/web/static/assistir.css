@@ -84,7 +84,44 @@ body {
 .botao-icone:hover { background: #1d2127; }
 .botao-icone:focus-visible, .botao:focus-visible { outline: 2px solid var(--texto); outline-offset: 2px; }
 
+.volume { flex: none; display: flex; align-items: center; gap: 8px; }
+.volume[data-mudo="true"] .ondas, .volume:not([data-mudo="true"]) .x { display: none; }
+.volume input {
+  width: 96px;
+  height: 4px;
+  margin: 0;
+  appearance: none;
+  background: linear-gradient(to right, var(--texto) var(--preenchido, 100%), var(--borda) var(--preenchido, 100%));
+  border-radius: 2px;
+  cursor: pointer;
+}
+.volume input::-webkit-slider-thumb { appearance: none; width: 14px; height: 14px; border-radius: 50%; background: var(--texto); }
+.volume input::-moz-range-thumb { width: 14px; height: 14px; border: 0; border-radius: 50%; background: var(--texto); }
+.volume input:focus-visible { outline: 2px solid var(--texto); outline-offset: 4px; }
+
 .area { position: relative; min-height: 0; background: #000; }
+
+.ativar-som {
+  position: absolute;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 16px;
+  color: #111;
+  background: var(--texto);
+  border: 0;
+  border-radius: 999px;
+  font: inherit;
+  font-weight: 600;
+  white-space: nowrap;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+  cursor: pointer;
+  z-index: 2;
+}
+.ativar-som:focus-visible { outline: 2px solid var(--texto); outline-offset: 2px; }
 
 .palco {
   height: 100%;
@@ -160,4 +197,5 @@ body {
 @media (max-width: 520px) {
   .barra { gap: 8px; padding: 8px 12px; }
   .transmissor { display: none; }
+  .volume input { width: 64px; }
 }

@@ -111,9 +111,25 @@ def _diagnostico() -> int:
         import pystray
         return pystray.Icon.__module__
 
+    def som() -> str:
+        import os
+        import time
+        from cliente.media import audio
+        audio._ole32.CoInitializeEx(None, 0)
+        discord = audio.processo_discord()
+        sessao, dados = audio._Sessao(discord or os.getpid()), bytearray()
+        try:
+            inicio = time.perf_counter()
+            while time.perf_counter() - inicio < 0.3:
+                sessao.ler(dados, 10)
+        finally:
+            sessao.fechar()
+        excluido = f"sem o Discord (pid {discord})" if discord else "Discord fechado"
+        return f"loopback por processo ok, {len(dados) // audio.BYTES_POR_AMOSTRA} amostras em 0,3 s, {excluido}"
+
     for nome, funcao in (("LiveKit", livekit_ffi), ("Interface (Tk)", tk), ("Cofre de credenciais", keyring_backend),
                          ("Telas", telas), ("Captura DXGI", dxgi), ("Captura de janela", janelas),
-                         ("OpenCV", opencv), ("Bandeja", bandeja)):
+                         ("OpenCV", opencv), ("Bandeja", bandeja), ("Som do PC", som)):
         checar(nome, funcao)
     linhas.append("RESULTADO: " + ("OK" if not falhas else f"{falhas} FALHA(S)"))
     relatorio = "\n".join(linhas)
@@ -124,7 +140,24 @@ def _diagnostico() -> int:
     return 1 if falhas else 0
 
 
+def _limpar_dados() -> int:
+    """LiveDosDude.exe --limpar-dados: apaga o pareamento (token no Gerenciador de Credenciais).
+
+    Chamado pelo desinstalador quando o usuário pede para remover também os dados; a pasta
+    %APPDATA%/LiveDosDude o próprio desinstalador apaga depois.
+    """
+    from cliente.config import BACKEND_PADRAO
+    from cliente.credenciais import CredenciaisWindows
+
+    credenciais = CredenciaisWindows()
+    for url in {ConfigCliente.carregar().backend_url, BACKEND_PADRAO}:
+        credenciais.apagar(url)
+    return 0
+
+
 def main() -> None:
+    if "--limpar-dados" in sys.argv:
+        sys.exit(_limpar_dados())
     if "--diagnostico" in sys.argv:
         ativar_dpi_awareness()
         sys.exit(_diagnostico())

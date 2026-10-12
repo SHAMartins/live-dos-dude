@@ -37,6 +37,8 @@ class ConfigCliente:
     resolucao: Literal["480p", "720p", "1080p", "nativa"] = "720p"
     fps: int = 30
     bitrate_kbps: int = 2500
+    # Som do sistema junto com o vídeo (todo o som do PC, inclusive chamadas de voz).
+    audio: bool = True
     # O que sacrificar quando falta banda ou CPU: "resolucao" mantém o fps (jogos),
     # "fps" mantém a nitidez (texto, código).
     sacrificar: Literal["resolucao", "fps"] = "fps"

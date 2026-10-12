@@ -84,7 +84,7 @@ de distorcer.
 .venv/Scripts/python -m pytest
 ```
 
-42 testes. Os de integração sobem o **backend real** (`../backend_bot`). Os marcados como `tela`
+45 testes. Os de integração sobem o **backend real** (`../backend_bot`). Os marcados como `tela`
 capturam a sua tela, e o ponta a ponta (`livekit`) precisa do LiveKit local
 (`docker compose -f infra_sfu/dev/docker-compose.yml up -d`). Sem ele, é pulado.
 
@@ -98,6 +98,7 @@ capturam a sua tela, e o ponta a ponta (`livekit`) precisa do LiveKit local
 | Cursor | Desenhado por cima via Win32 (`DrawIconEx` sobre fundo preto e branco) | Nem a DXGI nem o GDI incluem o cursor. Suporta sombra (alfa) e cursores que invertem a cor (I-beam) |
 | Encode | `ENCODER_BACKEND_SOFTWARE`, sem simulcast | Restrição do projeto. O teste ponta a ponta confirma `libvpx` e `power_efficient_encoder=false` |
 | Entrega | `VideoFrame` de um array 1D | Com array 3D o SDK copia o quadro inteiro de novo |
+| Som | WASAPI **loopback por processo** excluindo a árvore do Discord, PCM 48 kHz estéreo, Opus 128 kbps sem DTX | Todo o som do PC menos as vozes da call (como o Go Live do Discord). O Discord é procurado a cada 2 s; se abrir/fechar no meio, a captura é refeita. Precisa do Windows 10 2004+; sem isso a transmissão segue sem som. Discord no navegador não dá para separar |
 
 Custo da captura (sem contar o encode), com o vídeo indo de fato para um `VideoSource`:
 

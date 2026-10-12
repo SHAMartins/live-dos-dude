@@ -77,6 +77,7 @@ class InfoFalsa:
     codec: str
     captura: str = "falsa"
     fonte: str = "fonte falsa"
+    audio: bool = False
 
 
 @dataclass

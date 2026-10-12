@@ -72,6 +72,10 @@ Cada `/transmitir` gera uma chave aleatória de 128 bits, e o bot posta `URL_PUB
 Quem tem o link assiste no navegador, sem login e sem instalar nada. A chave para de funcionar quando a
 transmissão acaba. Se várias pessoas transmitirem na mesma sala, a página mostra todas lado a lado.
 
+O som do PC de quem transmite toca junto, com controle de volume e mudo (tecla `M`) no alto da página;
+a escolha fica salva no navegador. Navegadores bloqueiam som antes de a pessoa interagir com a página:
+nesse caso aparece o botão **Clique para ativar o som**.
+
 - O HTML não carrega token: o preview de link do Discord vê só o título ("🔴 Fulano ao vivo na sala dev").
   O token, só de assistir e só daquela sala, sai num `POST` feito pelo JavaScript da página.
 - O SDK do navegador (`livekit-client` 2.22.3) vem do jsDelivr com **SRI**: se o arquivo mudar, o navegador recusa.
@@ -172,7 +176,7 @@ gracioso: os PCs recebem o fechamento 1012 e reconectam sozinhos quando o backen
 | `app/api/` | `/saude` e `/ws/cliente` (handshake, recepção, envio) |
 | `app/services/gateway.py` | Conexões online; comando → `ack` → `resultado` com prazo |
 | `app/services/transmissao.py` | Regras: pareamento, transmitir/parar, reconciliação ao reconectar |
-| `app/services/tokens.py` | JWTs do LiveKit (publicador só `screen_share`; espectador só assiste) |
+| `app/services/tokens.py` | JWTs do LiveKit (publicador só `screen_share` e `screen_share_audio`; espectador só assiste) |
 | `app/db/` | SQLite via aiosqlite (WAL): usuários, PCs (hash do token), códigos, salas, sessões |
 | `app/bot/` | Slash commands; só traduzem Discord ↔ serviço |
 | `app/api/espectador.py` + `app/web/` | Página do espectador (`/assistir/<chave>`) e emissão do token (`POST /api/assistir/<chave>`) |

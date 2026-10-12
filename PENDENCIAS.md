@@ -67,19 +67,19 @@ Passo a passo em [backend_bot/README.md](backend_bot/README.md#deploy-vm-própri
 - [ ] **[você]** Se usar escala de tela 125%/150%, conferir se o cursor aparece no lugar certo (só testei em 100%)
 - [ ] **[você]** Subir o `dist/LiveDosDude-0.1.0-windows.zip` (76 MB) num Drive e mandar o link para quem vai transmitir
 - [ ] **[código]** (evolução) Assinatura digital do `.exe` (tira o aviso do SmartScreen; certificado é pago)
-- [ ] **[código]** (evolução) Instalador com atalho no Menu Iniciar e desinstalador (ex.: Inno Setup)
+- [ ] **[você]** Testar o som numa live real: tocar música/jogo **e** falar numa call do Discord; quem assiste deve ouvir só o jogo
+- [ ] **[código]** (evolução) Escolher de quais apps vem o som (hoje: tudo menos o Discord)
 - [ ] **[você]** Testar o seletor: transmitir uma **janela** (ex.: um jogo ou o navegador) e trocar a qualidade com **Aplicar agora** no meio
-- [ ] **[código]** (evolução) Áudio do sistema junto com a tela (o token já permite `screen_share_audio`)
 
 ## Página do espectador
 
 - [ ] **[você]** No deploy, conferir `URL_PUBLICA=https://api.<domínio>` no `.env` do backend (é a base dos links que o bot posta)
 - [ ] **[você]** Abrir um link no celular e conferir o layout (o CSS tem regras para telas pequenas, mas só testei no desktop)
 - [ ] **[código]** (evolução) Login com Discord como opção extra de acesso
-- [ ] **[código]** (evolução) Áudio da transmissão na página (quando o cliente publicar áudio)
 
 ## Feito
 
+- [x] 2026-10-12: **Som da transmissão sem as vozes do Discord**: loopback por processo do Windows excluindo o Discord, caixa "Transmitir o som do PC" no app, volume/mudo na página do espectador (salvo no navegador), `--diagnostico` confere o som; backend na VM atualizado; 45 + 69 testes
 - [x] 2026-10-12: Código no GitHub (privado): <https://github.com/SHAMartins/live-dos-dude>, sem segredos (varredura feita antes do push), LF forçado no `.gitattributes`
 - [x] 2026-10-12: **Executável do cliente** (PyInstaller, pasta + zip de 76 MB): já aponta para o backend de produção, opção "Iniciar com o Windows", `--diagnostico`; testado de ponta a ponta transmitindo uma janela
 - [x] 2026-10-12: **Fonte e qualidade na janela do cliente**: seletor de tela/janela estilo Go Live, resolução/FPS/bitrate, `/transmitir` com prioridade, "Aplicar agora" sem trocar o link; backend na VM atualizado; 39 + 64 testes

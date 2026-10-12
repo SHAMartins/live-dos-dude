@@ -41,7 +41,8 @@ def montar_guia() -> discord.Embed:
     guia.add_field(
         name="👀 Quero só assistir",
         value="Clique em **Assistir** na mensagem 🔴 que o bot posta quando alguém começa a transmitir. "
-              "Abre no navegador, sem login.",
+              "Abre no navegador, sem login. O volume fica no alto da página (tecla **M** silencia); "
+              "se aparecer **Clique para ativar o som**, é só clicar.",
         inline=False,
     )
     guia.add_field(
@@ -55,6 +56,7 @@ def montar_guia() -> discord.Embed:
     guia.add_field(
         name="⚙️ Dicas",
         value="• No app você escolhe **o que transmitir** (tela ou janela) e a qualidade padrão.\n"
+              "• O som do PC vai junto, **menos o Discord**: as vozes da call não vazam para quem assiste.\n"
               "• Mudou algo durante a transmissão? Clique em **Aplicar agora** no app: o link continua o mesmo.\n"
               "• Ninguém consegue ligar a tela de outra pessoa: o `/transmitir` só aciona o PC de quem digitou.\n"
               "• Várias pessoas podem transmitir na mesma sala; a página mostra as telas lado a lado.",

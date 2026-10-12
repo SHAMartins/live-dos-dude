@@ -216,7 +216,8 @@ class Janela(ctk.CTk):
             largura, altura = s.resolucao
             self._sala.configure(text=f"Sala: {s.sala}")
             self._detalhes.configure(
-                text=f"{s.fonte}\n{largura}x{altura} · {s.fps_alvo} fps · {s.bitrate_kbps} kbps · {s.codec.upper()}")
+                text=f"{s.fonte}\n{largura}x{altura} · {s.fps_alvo} fps · {s.bitrate_kbps} kbps · {s.codec.upper()}"
+                     f" · {'com som' if s.audio else 'sem som'}")
             self._quadro_ao_vivo.grid()
         else:
             self._quadro_ao_vivo.grid_remove()

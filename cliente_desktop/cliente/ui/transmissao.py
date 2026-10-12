@@ -65,14 +65,21 @@ class PainelTransmissao(ctk.CTkFrame):
                                        text_color=suave, command=self._usar_sugestao)
         self._sugestao.grid(row=5, column=1, columnspan=2, sticky="w", pady=(0, 4))
 
+        self._audio = ctk.BooleanVar(value=config.audio)
+        ctk.CTkCheckBox(self, text="Transmitir o som do PC", variable=self._audio, command=self._mudou_audio).grid(
+            row=6, column=0, columnspan=3, sticky="w", padx=12, pady=(6, 0))
+        ctk.CTkLabel(self, anchor="w", justify="left", wraplength=340, text_color=suave, font=ctk.CTkFont(size=11),
+                     text="Todo o som do PC, menos o Discord: as vozes da call não vão para quem assiste.").grid(
+            row=7, column=0, columnspan=3, sticky="ew", padx=(42, 12))
+
         self._dica = ctk.CTkLabel(self, anchor="w", justify="left", wraplength=340, text_color=suave,
                                   font=ctk.CTkFont(size=11),
                                   text="Vale para as próximas transmissões. O que for digitado no /transmitir "
                                        "tem prioridade naquela vez.")
-        self._dica.grid(row=6, column=0, columnspan=3, sticky="ew", padx=12, pady=(2, 6))
+        self._dica.grid(row=8, column=0, columnspan=3, sticky="ew", padx=12, pady=(6, 6))
 
         self._aplicar = ctk.CTkButton(self, text="Aplicar agora (o vídeo para ~1 s)", command=self._clicou_aplicar)
-        self._aplicar.grid(row=7, column=0, columnspan=3, sticky="ew", padx=12, pady=(0, 10))
+        self._aplicar.grid(row=9, column=0, columnspan=3, sticky="ew", padx=12, pady=(0, 10))
         self._aplicar.grid_remove()
         self._atualizar_textos()
 
@@ -96,6 +103,10 @@ class PainelTransmissao(ctk.CTkFrame):
 
     def _mudou_bitrate(self, valor: float) -> None:
         self._config.bitrate_kbps = int(round(valor / 100) * 100)
+        self._registrar_mudanca()
+
+    def _mudou_audio(self) -> None:
+        self._config.audio = bool(self._audio.get())
         self._registrar_mudanca()
 
     def _usar_sugestao(self) -> None:

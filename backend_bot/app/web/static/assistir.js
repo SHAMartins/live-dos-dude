@@ -7,11 +7,25 @@
     palco: $("palco"), aviso: $("aviso"), girando: $("girando"), avisoTitulo: $("aviso-titulo"),
     avisoTexto: $("aviso-texto"), tentar: $("tentar"), selo: $("selo"), sala: $("sala"),
     transmissor: $("transmissor"), espectadores: $("espectadores"), contagem: $("contagem"),
-    telaCheia: $("tela-cheia"),
+    telaCheia: $("tela-cheia"), volume: $("volume"), mudo: $("mudo"), volumeNivel: $("volume-nivel"),
+    ativarSom: $("ativar-som"),
   };
   const chave = decodeURIComponent(location.pathname.split("/").filter(Boolean).pop() || "");
   const tiles = new Map(); // trackSid -> { tile, track }
+  const sons = new Map(); // trackSid -> { elemento, track }
   let sala = null;
+
+  // Volume e mudo ficam salvos neste navegador (valem para as próximas lives também).
+  const CHAVE_SOM = "livedosdude.som";
+  const som = (() => {
+    try {
+      const salvo = JSON.parse(localStorage.getItem(CHAVE_SOM));
+      if (salvo && typeof salvo.volume === "number") {
+        return { volume: Math.min(1, Math.max(0, salvo.volume)), mudo: Boolean(salvo.mudo) };
+      }
+    } catch { /* armazenamento bloqueado: usa o padrão */ }
+    return { volume: 1, mudo: false };
+  })();
 
   class LinkInvalido extends Error {}
 
@@ -52,7 +66,59 @@
     }
   }
 
+  function salvarSom() {
+    try { localStorage.setItem(CHAVE_SOM, JSON.stringify(som)); } catch { /* sem armazenamento */ }
+  }
+
+  function aplicarSom() {
+    const silencioso = som.mudo || som.volume === 0;
+    const efetivo = silencioso ? 0 : som.volume;
+    for (const { track } of sons.values()) track.setVolume(efetivo);
+    el.volumeNivel.value = String(Math.round(efetivo * 100));
+    el.volumeNivel.style.setProperty("--preenchido", `${efetivo * 100}%`);
+    el.volume.dataset.mudo = String(silencioso);
+    const rotulo = silencioso ? "Ativar o som (M)" : "Silenciar (M)";
+    el.mudo.title = rotulo;
+    el.mudo.setAttribute("aria-label", rotulo);
+    el.mudo.setAttribute("aria-pressed", String(silencioso));
+  }
+
+  function atualizarSom() {
+    el.volume.hidden = sons.size === 0;
+    // Navegadores bloqueiam som antes de a pessoa interagir com a página.
+    el.ativarSom.hidden = sons.size === 0 || !sala || sala.canPlaybackAudio;
+  }
+
+  function liberarSom() {
+    if (sala && !sala.canPlaybackAudio) sala.startAudio().then(atualizarSom, () => {});
+  }
+
+  function alternarMudo() {
+    if (som.mudo || som.volume === 0) {
+      som.mudo = false;
+      if (som.volume === 0) som.volume = 0.5;
+    } else {
+      som.mudo = true;
+    }
+    salvarSom();
+    aplicarSom();
+    liberarSom();
+  }
+
+  function adicionarSom(track, publicacao) {
+    const elemento = track.attach();
+    elemento.hidden = true;
+    document.body.append(elemento);
+    sons.set(publicacao.trackSid, { elemento, track });
+    aplicarSom();
+    atualizarSom();
+  }
+
   function adicionar(track, publicacao, participante) {
+    if (track.kind === "audio") {
+      adicionarSom(track, publicacao);
+      return;
+    }
     if (track.kind !== "video") return;
     const tile = document.createElement("figure");
     tile.className = "tile";
@@ -76,6 +142,14 @@
   }
 
   function remover(track, publicacao) {
+    const somDaTrack = sons.get(publicacao.trackSid);
+    if (somDaTrack) {
+      track.detach();
+      somDaTrack.elemento.remove();
+      sons.delete(publicacao.trackSid);
+      atualizarSom();
+      return;
+    }
     const item = tiles.get(publicacao.trackSid);
     if (!item) return;
     track.detach();
@@ -90,7 +164,13 @@
       tile.remove();
     }
     tiles.clear();
+    for (const { elemento, track } of sons.values()) {
+      track.detach();
+      elemento.remove();
+    }
+    sons.clear();
     sala = null;
+    atualizarSom();
     el.selo.hidden = true;
     el.espectadores.hidden = true;
   }
@@ -133,6 +213,7 @@
       .on(RoomEvent.ParticipantDisconnected, mudouParticipante)
       .on(RoomEvent.Reconnecting, () => avisar("Reconectando…", "", { carregando: true }))
       .on(RoomEvent.Reconnected, atualizarEstado)
+      .on(RoomEvent.AudioPlaybackStatusChanged, atualizarSom)
       .on(RoomEvent.Disconnected, () => {
         if (sala !== atual) return;
         limpar();
@@ -151,9 +232,23 @@
 
   el.tentar.addEventListener("click", entrar);
   el.telaCheia.addEventListener("click", () => alternarTelaCheia());
-  document.addEventListener("keydown", (evento) => {
-    if (evento.key.toLowerCase() === "f" && !evento.ctrlKey && !evento.metaKey && !evento.altKey) alternarTelaCheia();
+  el.ativarSom.addEventListener("click", liberarSom);
+  el.mudo.addEventListener("click", alternarMudo);
+  el.volumeNivel.addEventListener("input", () => {
+    const valor = Number(el.volumeNivel.value) / 100;
+    if (valor > 0) Object.assign(som, { volume: valor, mudo: false });
+    else som.mudo = true; // guarda o volume anterior para quando desmutar
+    salvarSom();
+    aplicarSom();
+    liberarSom();
   });
+  document.addEventListener("keydown", (evento) => {
+    if (evento.ctrlKey || evento.metaKey || evento.altKey || evento.target instanceof HTMLInputElement) return;
+    const tecla = evento.key.toLowerCase();
+    if (tecla === "f") alternarTelaCheia();
+    else if (tecla === "m" && sons.size > 0) alternarMudo();
+  });
+  aplicarSom();
   window.addEventListener("pagehide", () => sala?.disconnect());
   entrar();
 })();

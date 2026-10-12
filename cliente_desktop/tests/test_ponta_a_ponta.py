@@ -53,16 +53,25 @@ async def test_transmitir_pelo_backend_e_um_espectador_recebe_a_tela(backend, cr
     sessao = await backend.servico.transmitir(FULANO, PedidoTransmissao("e2e", "720p", 30, 2500, "vp8"))
     snapshot = await cliente.esperar(Estado.TRANSMITINDO)
     assert snapshot.resolucao == esperado and snapshot.captura == "dxgi"
+    assert snapshot.audio, "o som do PC deveria ir junto (config padrão)"
 
     # Espectador entra pelo link com chave (o mesmo que o bot posta) e conta os quadros que chegam.
     acesso = await backend.servico.acesso_por_chave(sessao.chave_espectador)
     url, token = acesso.livekit_url, acesso.token
     espectador = rtc.Room()
-    recebida: asyncio.Future[rtc.Track] = asyncio.get_running_loop().create_future()
-    espectador.on("track_subscribed", lambda track, *_: recebida.done() or recebida.set_result(track))
+    laco = asyncio.get_running_loop()
+    recebidas: dict[int, asyncio.Future[tuple[rtc.Track, rtc.RemoteTrackPublication]]] = {
+        rtc.TrackKind.KIND_VIDEO: laco.create_future(), rtc.TrackKind.KIND_AUDIO: laco.create_future()}
+
+    def inscreveu(track: rtc.Track, publicacao: rtc.RemoteTrackPublication, *_) -> None:
+        futuro = recebidas.get(track.kind)
+        if futuro is not None and not futuro.done():
+            futuro.set_result((track, publicacao))
+
+    espectador.on("track_subscribed", inscreveu)
     await espectador.connect(url, token)
     try:
-        track = await asyncio.wait_for(recebida, 10)
+        track, _ = await asyncio.wait_for(recebidas[rtc.TrackKind.KIND_VIDEO], 10)
         quadros, dimensoes = 0, set()
         stream = rtc.VideoStream(track)
         async with asyncio.timeout(10):
@@ -79,6 +88,18 @@ async def test_transmitir_pelo_backend_e_um_espectador_recebe_a_tela(backend, cr
                      if s.WhichOneof("stats") == "outbound_rtp")
         assert saida.encoder_implementation == "libvpx"
         assert not saida.power_efficient_encoder
+
+        # O som chega como áudio de compartilhamento de tela, estéreo a 48 kHz.
+        som, publicacao = await asyncio.wait_for(recebidas[rtc.TrackKind.KIND_AUDIO], 10)
+        assert publicacao.source == rtc.TrackSource.SOURCE_SCREENSHARE_AUDIO
+        fluxo, blocos = rtc.AudioStream(som, sample_rate=48000, num_channels=2), 0
+        async with asyncio.timeout(10):
+            async for evento in fluxo:
+                assert evento.frame.sample_rate == 48000 and evento.frame.num_channels == 2
+                blocos += 1
+                if blocos >= 50:
+                    break
+        await fluxo.aclose()
     finally:
         await espectador.disconnect()
 
@@ -112,7 +133,9 @@ async def test_aplicar_agora_troca_tela_por_janela_e_o_espectador_continua(backe
     acesso = await backend.servico.acesso_por_chave(sessao.chave_espectador)
     espectador = rtc.Room()
     tracks: asyncio.Queue[rtc.Track] = asyncio.Queue()
-    espectador.on("track_subscribed", lambda track, *_: tracks.put_nowait(track))
+    sons: asyncio.Queue[rtc.Track] = asyncio.Queue()
+    espectador.on("track_subscribed", lambda track, *_: (
+        tracks if track.kind == rtc.TrackKind.KIND_VIDEO else sons).put_nowait(track))
     await espectador.connect(acesso.livekit_url, acesso.token)
 
     async def contar_quadros(track: rtc.Track, quantos: int) -> set[tuple[int, int]]:
@@ -133,6 +156,8 @@ async def test_aplicar_agora_troca_tela_por_janela_e_o_espectador_continua(backe
         await cliente.controlador.aplicar_configuracao()
         assert cliente.snapshots[-1].captura == "janela"
         assert await contar_quadros(await asyncio.wait_for(tracks.get(), 10), 15)
+        await asyncio.wait_for(sons.get(), 10)  # o som é republicado junto
+        await asyncio.wait_for(sons.get(), 10)
         assert cliente.controlador.sessao_id == sessao.id
         assert (await backend.servico.acesso_por_chave(sessao.chave_espectador)) is not None  # link ainda vale
     finally:

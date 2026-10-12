@@ -9,6 +9,7 @@ from livekit import rtc  # carregado na inicialização do app: o import da lib 
 
 from cliente.controlador import ParametrosMidia
 from cliente.media import fontes
+from cliente.media.audio import TAXA, CANAIS, CapturaAudio
 from cliente.media.captura import ThreadMidia
 from cliente.media.escala import tamanho_de_saida
 
@@ -30,14 +31,17 @@ class InfoPublicacao:
     codec: str
     captura: str   # "dxgi", "gdi" ou "janela"
     fonte: str     # descrição para a UI
+    audio: bool    # o som do PC está sendo publicado
 
 
 class Publicador:
     """Uma transmissão por vez. A sala do LiveKit fica conectada durante a sessão inteira; trocar
     fonte ou qualidade só republica a track (os espectadores continuam no mesmo link)."""
 
-    def __init__(self, midia: ThreadMidia, sacrificar: str = "fps") -> None:
+    def __init__(self, midia: ThreadMidia, sacrificar: str = "fps", audio: CapturaAudio | None = None) -> None:
         self.midia = midia
+        self.audio = audio or CapturaAudio()
+        self._track_audio: rtc.LocalAudioTrack | None = None
         self._degradacao = DEGRADACAO[sacrificar]
         self._sala: rtc.Room | None = None
         self._nome_sala = ""
@@ -73,18 +77,41 @@ class Publicador:
         """Aplica nova fonte/qualidade sem sair da sala: ~1-2 s de vídeo parado para quem assiste."""
         if self._sala is None:
             raise RuntimeError("não há transmissão para alterar")
-        await asyncio.to_thread(self.midia.parar)
-        if self._track is not None:
-            await self._sala.local_participant.unpublish_track(self._track.sid)
-            self._track = None
+        await self._parar_capturas()
+        for track in (self._track, self._track_audio):
+            if track is not None:
+                await self._sala.local_participant.unpublish_track(track.sid)
+        self._track = self._track_audio = None
         return await self._publicar(self._sala, parametros, fonte)
 
     async def parar(self) -> None:
         self._parando = True
-        await asyncio.to_thread(self.midia.parar)
+        await self._parar_capturas()
         if self._sala is not None:
             await self._sala.disconnect()
-        self._sala, self._track = None, None
+        self._sala, self._track, self._track_audio = None, None, None
+
+    async def _parar_capturas(self) -> None:
+        await asyncio.gather(asyncio.to_thread(self.midia.parar), asyncio.to_thread(self.audio.parar))
+
+    async def _publicar_audio(self, sala: rtc.Room) -> bool:
+        """Publica o som do PC. Se falhar (sem dispositivo de saída...), a transmissão segue só com vídeo."""
+        origem = rtc.AudioSource(TAXA, CANAIS)
+        track = rtc.LocalAudioTrack.create_audio_track("som", origem)
+        opcoes = rtc.TrackPublishOptions(
+            source=rtc.TrackSource.SOURCE_SCREENSHARE_AUDIO,
+            dtx=False,                             # música/jogo: não cortar os trechos baixos
+            audio_encoding={"max_bitrate": 128_000},  # Opus estéreo com qualidade de música
+        )
+        try:
+            await asyncio.to_thread(self.audio.iniciar, origem, asyncio.get_running_loop())
+            await sala.local_participant.publish_track(track, opcoes)
+        except Exception as erro:  # noqa: BLE001 - som é opcional: não derruba o vídeo
+            log.warning("transmitindo sem som: %s", erro)
+            await asyncio.to_thread(self.audio.parar)
+            return False
+        self._track_audio = track
+        return True
 
     async def _publicar(self, sala: rtc.Room, parametros: ParametrosMidia, fonte: dict | None) -> InfoPublicacao:
         loop = asyncio.get_running_loop()
@@ -110,11 +137,13 @@ class Publicador:
             await asyncio.to_thread(self.midia.parar)
             raise
         self._track = track
+        com_audio = await self._publicar_audio(sala) if parametros.audio else False
         descricao = fontes.descrever(fonte)
-        log.info("publicando %dx%d@%d %d kbps (%s, captura %s: %s) na sala %s", largura, altura,
-                 parametros.fps, parametros.bitrate_kbps, parametros.codec, nome_captura, descricao, self._nome_sala)
+        log.info("publicando %dx%d@%d %d kbps (%s, captura %s: %s, %s) na sala %s", largura, altura,
+                 parametros.fps, parametros.bitrate_kbps, parametros.codec, nome_captura, descricao,
+                 "com som" if com_audio else "sem som", self._nome_sala)
         return InfoPublicacao(self._nome_sala, largura, altura, parametros.fps, parametros.bitrate_kbps,
-                              parametros.codec, nome_captura, descricao)
+                              parametros.codec, nome_captura, descricao, com_audio)
 
 
 def rtc_nome_motivo(motivo) -> str:

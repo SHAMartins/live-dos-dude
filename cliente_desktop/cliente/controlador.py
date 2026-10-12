@@ -27,6 +27,7 @@ class ParametrosMidia:
     fps: int
     bitrate_kbps: int
     codec: str
+    audio: bool = True
 
 
 class InfoPublicacao(Protocol):
@@ -38,6 +39,7 @@ class InfoPublicacao(Protocol):
     codec: str
     captura: str
     fonte: str
+    audio: bool
 
 
 class Publicador(Protocol):
@@ -61,12 +63,13 @@ def mesclar(comando: proto.Iniciar, config: ConfigCliente) -> ParametrosMidia:
         fps=v.fps if "fps" in definidos else config.fps,
         bitrate_kbps=v.bitrate_kbps if "bitrate_kbps" in definidos else config.bitrate_kbps,
         codec=v.codec,
+        audio=config.audio,
     )
 
 
 def parametros_do_app(config: ConfigCliente, codec: str) -> ParametrosMidia:
     largura, altura = CAIXAS[config.resolucao]
-    return ParametrosMidia(largura, altura, config.fps, config.bitrate_kbps, codec)
+    return ParametrosMidia(largura, altura, config.fps, config.bitrate_kbps, codec, config.audio)
 
 
 def video_aplicado(info: InfoPublicacao) -> proto.ParametrosVideo:
@@ -175,7 +178,7 @@ class Controlador:
         self._info = info
         self._atualizar(estado=Estado.TRANSMITINDO, mensagem="", sala=info.sala,
                         resolucao=(info.largura, info.altura), fps_alvo=info.fps, bitrate_kbps=info.bitrate_kbps,
-                        codec=info.codec, captura=info.captura, fonte=info.fonte)
+                        codec=info.codec, captura=info.captura, fonte=info.fonte, audio=info.audio)
 
     async def _parar_por_comando(self, comando: proto.Parar) -> proto.Resultado:
         await self._encerrar_publicacao()
@@ -195,7 +198,7 @@ class Controlador:
             log.exception("erro ao parar a publicação")
         self._sessao_id, self._info = None, None
         self._atualizar(estado=self._estado_conexao, sala=None, resolucao=None, fps_alvo=None,
-                        bitrate_kbps=None, codec=None, captura=None, fonte=None)
+                        bitrate_kbps=None, codec=None, captura=None, fonte=None, audio=None)
 
     # --- estado ---------------------------------------------------------------
 

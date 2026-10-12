@@ -29,6 +29,7 @@ class Snapshot:
     codec: str | None = None
     captura: str | None = None  # "dxgi", "gdi" ou "janela"
     fonte: str | None = None    # descrição do que está sendo transmitido
+    audio: bool | None = None   # o som do PC está indo junto?
 
     def com(self, **mudancas) -> Snapshot:
         return replace(self, **mudancas)
