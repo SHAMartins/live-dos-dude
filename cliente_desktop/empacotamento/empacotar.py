@@ -3,11 +3,13 @@
     cd cliente_desktop
     .venv/Scripts/python empacotamento/empacotar.py
 
-Saída: dist/LiveDosDude/LiveDosDude.exe e dist/LiveDosDude-<versão>-windows.zip
+Saída: dist/LiveDosDude/LiveDosDude.exe, dist/LiveDosDude-<versão>-windows.zip e, se o Inno Setup 6
+estiver instalado, dist/LiveDosDude-<versão>-instalador.exe
 """
 
 from __future__ import annotations
 
+import os
 import shutil
 import subprocess
 import sys
@@ -50,6 +52,25 @@ def gerar_versao() -> None:
 """, encoding="utf-8")
 
 
+def localizar_iscc() -> Path | None:
+    """O compilador do Inno Setup: no PATH ou nos lugares onde o instalador dele costuma ficar."""
+    if achado := shutil.which("ISCC"):
+        return Path(achado)
+    candidatos = [Path(os.environ.get("LOCALAPPDATA", "")) / "Programs" / "Inno Setup 6" / "ISCC.exe"]
+    candidatos += [Path(os.environ[v]) / "Inno Setup 6" / "ISCC.exe" for v in ("ProgramFiles(x86)", "ProgramFiles")
+                   if v in os.environ]
+    return next((c for c in candidatos if c.exists()), None)
+
+
+def gerar_instalador(dist: Path) -> Path | None:
+    iscc = localizar_iscc()
+    if iscc is None:
+        print("\nInno Setup 6 não encontrado: pulei o instalador (winget install --id JRSoftware.InnoSetup -e).")
+        return None
+    subprocess.run([str(iscc), f"/DVersaoApp={VERSAO}", "/Q", str(PASTA / "instalador.iss")], check=True)
+    return dist / f"LiveDosDude-{VERSAO}-instalador.exe"
+
+
 def tamanho(caminho: Path) -> str:
     total = sum(f.stat().st_size for f in caminho.rglob("*") if f.is_file()) if caminho.is_dir() else caminho.stat().st_size
     return f"{total / 1024 / 1024:.0f} MB"
@@ -71,8 +92,11 @@ def main() -> None:
             if arquivo.is_file():
                 zipado.write(arquivo, Path("LiveDosDude") / arquivo.relative_to(pasta_app))
     shutil.rmtree(build, ignore_errors=True)
-    print(f"\npasta: {pasta_app} ({tamanho(pasta_app)})")
-    print(f"zip:   {pacote} ({tamanho(pacote)})")
+    instalador = gerar_instalador(dist)
+    print(f"\npasta:      {pasta_app} ({tamanho(pasta_app)})")
+    print(f"zip:        {pacote} ({tamanho(pacote)})")
+    if instalador:
+        print(f"instalador: {instalador} ({tamanho(instalador)})")
     print(f"pronto em {time.perf_counter() - inicio:.0f} s")
 
 
