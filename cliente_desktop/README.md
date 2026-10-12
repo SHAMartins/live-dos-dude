@@ -103,13 +103,35 @@ capturam a sua tela, e o ponta a ponta (`livekit`) precisa do LiveKit local
 |---|---|---|
 | Captura | **DXGI Desktop Duplication** (dxcam), com GDI (mss) de reserva | DXGI: ~3 ms/quadro. GDI: ~20 ms, limitado a ~45 fps. A Graphics Capture foi descartada: no Windows 10 desenha uma borda amarela que não dá para desligar e traz 113 MB de OpenCV junto |
 | Tela parada | A DXGI repete o último quadro | Sem quadros novos o encoder para, e quem entra na sala vê tela preta até algo mudar |
-| Redução | OpenCV `INTER_AREA`, 2 threads | 13 ms de CPU por quadro, contra 40 ms do Pillow. Com as 12 threads padrão o tempo cai, mas gasta 19 ms de CPU que o encoder precisa |
+| Redução | OpenCV `INTER_LINEAR`; reduções > 2x passam antes por uma metade exata (2:1), 2 threads | Era `INTER_AREA` (20-23 ms de CPU por quadro em 1080p→720p, o maior gasto do app). O LINEAR custa 5-9 ms com PSNR de 46 dB contra o AREA (imperceptível); em 1080p→480p, 2:1 + LINEAR dá 40,5 dB. Pillow BILINEAR custava 40 ms |
 | Cursor | Desenhado por cima via Win32 (`DrawIconEx` sobre fundo preto e branco) | Nem a DXGI nem o GDI incluem o cursor. Suporta sombra (alfa) e cursores que invertem a cor (I-beam) |
 | Encode | `ENCODER_BACKEND_SOFTWARE`, sem simulcast | Restrição do projeto. O teste ponta a ponta confirma `libvpx` e `power_efficient_encoder=false` |
 | Entrega | `VideoFrame` de um array 1D | Com array 3D o SDK copia o quadro inteiro de novo |
 | Som | WASAPI **loopback por processo** excluindo a árvore do Discord, PCM 48 kHz estéreo, Opus 128 kbps sem DTX | Todo o som do PC menos as vozes da call (como o Go Live do Discord). O Discord é procurado a cada 2 s; se abrir/fechar no meio, a captura é refeita. Precisa do Windows 10 2004+; sem isso a transmissão segue sem som. Discord no navegador não dá para separar |
 
-Custo da captura (sem contar o encode), com o vídeo indo de fato para um `VideoSource`:
+### CPU total do app em jogo (0.1.1)
+
+Medido nesta máquina (i5-10400F, 6 núcleos / 12 threads), com a tela em movimento constante (cena com rolagem
+e personagens, parecida com jogo), VP8 por software, um espectador, **processo inteiro** (captura + redução +
+conversão + encoder + rede). 100% = um núcleo lógico inteiro.
+
+| Configuração | 0.1.0 (INTER_AREA) | 0.1.1 (INTER_LINEAR) |
+|---|---|---|
+| 720p · 60 fps · 4000 kbps | 226% (entregava só ~50 fps) | **161%** (entrega 58 fps) |
+| 720p · 30 fps · 2500 kbps | 123% | **85%** |
+| 1080p · 30 fps · 4500 kbps | 183% | 171% (sem redução, quase igual) |
+| 480p · 30 fps · 1200 kbps | 120% | ~70% |
+
+A janela do app mostra o uso real ("CPU do app: N%", em % da CPU inteira) enquanto transmite.
+**Regra prática:** 60 fps custa quase o dobro de 30 fps, e 1080p quase o dobro de 720p. Para jogo exigente,
+720p a 30 fps é o mais leve que ainda fica bom.
+
+Testado e descartado: baixar a prioridade do processo (`BELOW_NORMAL`). Com cargas simulando um jogo em 6, 8 e
+12 threads, a diferença no ritmo do "jogo" ficou entre -8 e +5 pontos, ora a favor ora contra: o custo está em
+dividir núcleos físicos (hyper-threading), não em disputa de escalonador. Reduzir trabalho é o que funciona.
+
+Custo da captura (sem contar o encode), com o vídeo indo de fato para um `VideoSource` (medido na 0.1.0,
+antes da troca da redução; hoje é ~30% menor nas linhas com redução):
 
 | Saída | ms por quadro | CPU da thread de mídia |
 |---|---|---|
