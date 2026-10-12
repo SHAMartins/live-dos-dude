@@ -6,7 +6,9 @@ que agendam o trabalho na thread asyncio.
 
 from __future__ import annotations
 
+import os
 import queue
+import time
 from collections.abc import Callable
 from dataclasses import dataclass
 
@@ -41,6 +43,8 @@ class Janela(ctk.CTk):
         super().__init__()
         self._painel, self._acoes, self._pedidos = painel, acoes, pedidos
         self._estatisticas, self._bandeja = estatisticas, bandeja
+        self._cpu_antes = (time.perf_counter(), time.process_time())
+        self._cpu_pct = 0.0
         self._versao = -1
         self._estado_anterior: Estado | None = None
 
@@ -199,10 +203,23 @@ class Janela(ctk.CTk):
                 self._bandeja.atualizar(snapshot)
         if snapshot.estado == Estado.TRANSMITINDO:
             fps, ms, aviso = self._estatisticas()
-            self._medidas.configure(text=f"Capturando a {fps:.0f} fps · {ms:.1f} ms por quadro")
+            self._medidas.configure(
+                text=f"Capturando a {fps:.0f} fps · {ms:.1f} ms por quadro · CPU do app: {self._medir_cpu():.0f}%")
             self._aviso.configure(text=aviso)
             self._aviso.grid() if aviso else self._aviso.grid_remove()
         self.after(INTERVALO_MS, self._tique)
+
+    def _medir_cpu(self) -> float:
+        """Uso de CPU do app (todas as threads, inclusive o encoder nativo) como % da CPU inteira.
+
+        Janela de ~1,5 s para o número não pular a cada tique.
+        """
+        agora, cpu = time.perf_counter(), time.process_time()
+        antes_t, antes_c = self._cpu_antes
+        if agora - antes_t >= 1.5:
+            self._cpu_pct = (cpu - antes_c) / (agora - antes_t) / (os.cpu_count() or 1) * 100
+            self._cpu_antes = (agora, cpu)
+        return self._cpu_pct
 
     def _renderizar(self, s: Snapshot) -> None:
         self._bolinha.configure(text_color=COR[s.estado])

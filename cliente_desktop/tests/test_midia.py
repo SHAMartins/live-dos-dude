@@ -40,6 +40,31 @@ def test_redimensionar_devolve_buffer_novo_gravavel_e_preserva_canais():
         assert tuple(saida[100, 100, :3]) == (200, 0, 10)
 
 
+def test_reducao_forte_passa_pela_metade_e_mantem_qualidade():
+    # 1080p -> 480p (2,25x) e 4K -> 720p: o resultado tem o tamanho exato e é um buffer novo e gravável.
+    rng = np.random.default_rng(1)
+    for origem_wh, alvo in (((1920, 1080), (854, 480)), ((3840, 2160), (1280, 720)), ((1920, 1080), (640, 360))):
+        origem = rng.integers(0, 255, (origem_wh[1], origem_wh[0], 4), dtype=np.uint8)
+        saida = redimensionar(origem, *alvo)
+        assert saida.shape == (alvo[1], alvo[0], 4)
+        assert saida.flags.writeable and saida.flags.c_contiguous and not np.shares_memory(saida, origem)
+
+
+def test_reducao_2_para_1_e_media_de_2x2_sem_serrilhado():
+    import cv2
+
+    xadrez = np.zeros((1080, 1920, 4), np.uint8)
+    xadrez[::2, ::2] = 255
+    xadrez[1::2, 1::2] = 255                    # pior caso para serrilhado: padrão de 1 pixel
+    saida = redimensionar(xadrez, 960, 540)
+    assert 120 <= int(saida[..., 0].min()) and int(saida[..., 0].max()) <= 135   # ~cinza médio, sem listras
+    # E, em escala não inteira, fica perto do INTER_AREA (referência de qualidade): > 40 dB em conteúdo suave.
+    base = cv2.GaussianBlur(np.random.default_rng(2).integers(0, 255, (1080, 1920, 4), dtype=np.uint8), (0, 0), 3)
+    ref = cv2.resize(base, (1280, 720), interpolation=cv2.INTER_AREA).astype(float)
+    mse = np.mean((redimensionar(base, 1280, 720).astype(float) - ref) ** 2)
+    assert 10 * np.log10(255 ** 2 / max(mse, 1e-9)) > 40
+
+
 def test_separar_camadas_reconhece_opaco_transparente_e_invertido():
     sobre_preto = np.array([[[10, 20, 30], [0, 0, 0], [255, 255, 255]]], np.uint8)
     sobre_branco = np.array([[[10, 20, 30], [255, 255, 255], [0, 0, 0]]], np.uint8)

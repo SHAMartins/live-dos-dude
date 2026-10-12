@@ -72,14 +72,18 @@ class PainelTransmissao(ctk.CTkFrame):
                      text="Todo o som do PC, menos o Discord: as vozes da call não vão para quem assiste.").grid(
             row=7, column=0, columnspan=3, sticky="ew", padx=(42, 12))
 
+        self._peso = ctk.CTkLabel(self, anchor="w", justify="left", wraplength=340,
+                                  text_color=("#a15c00", "#f0a33a"), font=ctk.CTkFont(size=11), text="")
+        self._peso.grid(row=8, column=0, columnspan=3, sticky="ew", padx=12, pady=(6, 0))
+
         self._dica = ctk.CTkLabel(self, anchor="w", justify="left", wraplength=340, text_color=suave,
                                   font=ctk.CTkFont(size=11),
                                   text="Vale para as próximas transmissões. O que for digitado no /transmitir "
                                        "tem prioridade naquela vez.")
-        self._dica.grid(row=8, column=0, columnspan=3, sticky="ew", padx=12, pady=(6, 6))
+        self._dica.grid(row=9, column=0, columnspan=3, sticky="ew", padx=12, pady=(6, 6))
 
         self._aplicar = ctk.CTkButton(self, text="Aplicar agora (o vídeo para ~1 s)", command=self._clicou_aplicar)
-        self._aplicar.grid(row=9, column=0, columnspan=3, sticky="ew", padx=12, pady=(0, 10))
+        self._aplicar.grid(row=10, column=0, columnspan=3, sticky="ew", padx=12, pady=(0, 10))
         self._aplicar.grid_remove()
         self._atualizar_textos()
 
@@ -138,6 +142,8 @@ class PainelTransmissao(ctk.CTkFrame):
     def _atualizar_textos(self) -> None:
         self._fonte.configure(text=_encurtar(fontes.descrever(self._config.fonte), 34))
         self._rotulo_bitrate.configure(text=f"{self._config.bitrate_kbps} kbps")
+        self._peso.configure(text=dica_de_peso(self._config.resolucao, self._config.fps))
+        self._peso.grid() if self._peso.cget("text") else self._peso.grid_remove()
         sugerido = bitrate_sugerido(self._config.resolucao, self._config.fps)
         self._sugestao.configure(text=f"Usar o sugerido: {sugerido} kbps")
         self._sugestao.grid() if sugerido != self._config.bitrate_kbps else self._sugestao.grid_remove()
@@ -253,6 +259,18 @@ class SeletorFonte(ctk.CTkToplevel):
     def _clicou(self, fonte: dict) -> None:
         self._escolher(fonte)
         self.destroy()
+
+
+def dica_de_peso(resolucao: str, fps: int) -> str:
+    """Aviso sobre configurações que pesam na CPU (medido: 720p30 = 1x, 720p60 ~ 1,9x, 1080p30 ~ 2x)."""
+    motivos = []
+    if fps >= 60:
+        motivos.append("60 fps usa quase o dobro da CPU de 30 fps")
+    if resolucao in ("1080p", "nativa"):
+        motivos.append("1080p usa cerca do dobro da CPU de 720p")
+    if not motivos:
+        return ""
+    return "Pesado para jogar: " + "; ".join(motivos) + ". Em jogo exigente, 720p a 30 fps é o mais leve."
 
 
 def _mesma_fonte(a: dict | None, b: dict | None) -> bool:
