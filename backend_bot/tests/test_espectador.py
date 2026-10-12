@@ -58,6 +58,23 @@ async def test_arquivos_estaticos_sao_servidos(ambiente):
         assert resposta.headers["Referrer-Policy"] == "no-referrer"
 
 
+async def test_pagina_aponta_para_a_versao_atual_dos_estaticos(ambiente):
+    # Os estáticos ficam 12 h em cache: o endereço precisa mudar quando o conteúdo muda.
+    import hashlib
+    import re
+    from pathlib import Path
+
+    cliente = ambiente.app.test_client()
+    resposta = await cliente.get("/assistir/qualquer")
+    html = await resposta.get_data(as_text=True)
+    assert resposta.headers["Cache-Control"] == "no-cache"
+    pasta = Path(ambiente.app.static_folder)
+    for nome in ("assistir.js", "assistir.css"):
+        versao = re.search(rf'/static/{re.escape(nome)}\?v=([0-9a-f]+)"', html).group(1)
+        assert hashlib.sha256((pasta / nome).read_bytes()).hexdigest().startswith(versao)
+        assert (await cliente.get(f"/static/{nome}?v={versao}")).status_code == 200
+
+
 async def test_chave_valida_da_token_so_de_assistir_e_so_nesta_sala(ambiente, cliente_pareado):
     sessao = await _transmitindo(ambiente, cliente_pareado)
     resposta = await ambiente.app.test_client().post(f"/api/assistir/{sessao.chave_espectador}")

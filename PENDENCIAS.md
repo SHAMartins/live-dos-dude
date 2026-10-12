@@ -79,6 +79,7 @@ Passo a passo em [backend_bot/README.md](backend_bot/README.md#deploy-vm-própri
 
 ## Feito
 
+- [x] 2026-10-12: **Correção: som não tocava para quem já tinha aberto a página antes** (o navegador guardava o JavaScript antigo por 12 h). Os estáticos agora vão com `?v=<hash do conteúdo>` e o HTML com `no-cache`; backend na VM atualizado; 70 testes
 - [x] 2026-10-12: **Release v0.1.0 no GitHub** com o instalador e o zip (SHA-256 nas notas); README com botão de download no topo
 - [x] 2026-10-12: **Instalador e desinstalador** (Inno Setup, por usuário, sem administrador): testado em modo silencioso: instala, `--diagnostico` OK, transmite tela + som pelo app instalado, desinstala sem deixar pasta, atalho nem registro (e preserva o pareamento)
 - [x] 2026-10-12: **Som da transmissão sem as vozes do Discord**: loopback por processo do Windows excluindo o Discord, caixa "Transmitir o som do PC" no app, volume/mudo na página do espectador (salvo no navegador), `--diagnostico` confere o som; backend na VM atualizado; 45 + 69 testes
