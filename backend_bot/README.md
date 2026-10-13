@@ -76,11 +76,36 @@ O som do PC de quem transmite toca junto, com controle de volume e mudo (tecla `
 a escolha fica salva no navegador. Navegadores bloqueiam som antes de a pessoa interagir com a página:
 nesse caso aparece o botão **Clique para ativar o som**.
 
+- **Tela cheia** é da página inteira: a barra com volume e **"Sair da tela cheia"** flutua sobre o vídeo e some
+  sozinha quando o mouse para (mexeu, volta). `F` alterna, `Esc` sai, duplo clique no vídeo também.
 - O HTML não carrega token: o preview de link do Discord vê só o título ("🔴 Fulano ao vivo na sala dev").
   O token, só de assistir e só daquela sala, sai num `POST` feito pelo JavaScript da página.
 - O SDK do navegador (`livekit-client` 2.22.3) vem do jsDelivr com **SRI**: se o arquivo mudar, o navegador recusa.
 - CSP restrita (só scripts próprios e do CDN; conexões só com o backend e o LiveKit) e `Referrer-Policy: no-referrer`,
   porque a chave está na URL e não pode vazar para o CDN.
+
+## Sala fechada quando a transmissão acaba
+
+Ao iniciar, o backend cria a sala no LiveKit com tempos curtos de vida vazia (120 s sem ninguém entrar,
+15 s depois do último sair). Quando a última transmissão da sala termina (`/parar`, o PC fechou o app, o PC
+saiu do LiveKit, a reconexão sem a sessão ou uma falha ao iniciar), a sala é **fechada no servidor**: quem
+ainda estava assistindo é desconectado e a página mostra "A transmissão terminou". Se outra pessoa ainda
+transmite na mesma sala, ela continua aberta.
+
+## Telemetria das transmissões
+
+Durante uma live, o app manda uma amostra de desempenho a cada ~10 s (protocolo: seção 3 de
+[docs/protocolo.md](../docs/protocolo.md)). O backend só registra no log, uma linha por amostra:
+
+```bash
+docker compose logs -f backend | grep telemetria
+```
+
+```
+telemetria 'PC' app 0.1.2 sessão 6ae8deba | captura dxgi 27.9/30 fps (14.2 ms/quadro) | enviado 27.5 fps, encode 7.7 ms (OpenH264) 1280x720 | limite=cpu | CPU app 9% sistema 94% GPU 99% (12 threads)
+```
+
+O log de conexão também mostra a versão do app (`PC 'X' de Y conectado (app 0.1.2)`).
 
 ## Canal de ajuda `#live-dos-dude`
 

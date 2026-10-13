@@ -60,6 +60,10 @@ descompactaria ~200 MB a cada abertura; a pasta abre em ~1 s.
   reinstalar sem `/parear`).
 - **Aviso do Windows na primeira vez** ("O Windows protegeu o computador"): o executável não tem
   assinatura digital (certificado pago). É só clicar em *Mais informações → Executar assim mesmo*.
+- **Fechar a janela (✕):** por padrão **pergunta** se mantém na bandeja (o app continua rodando para receber o
+  `/transmitir`) ou se sai de vez, e avisa quando há uma transmissão no ar. Dá para lembrar a escolha, e depois
+  mudar em *Conexão → Ao fechar a janela* (Perguntar / Manter na bandeja / Sair do app). Sair encerra a
+  transmissão, fecha a sala e termina o processo.
 - **Iniciar com o Windows:** caixa na seção *Conexão* da janela (só no executável; grava em
   `HKCU\...\Run`, sem precisar de administrador).
 - **`LiveDosDude.exe --diagnostico`** confere LiveKit, Tk, cofre de credenciais, capturas, bandeja e som e
