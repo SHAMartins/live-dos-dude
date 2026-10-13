@@ -24,7 +24,8 @@ async def test_comandos_registrados_com_opcoes_e_escolhas(ambiente):
         assert [c["value"] for c in opcoes["resolucao"]["choices"]] == ["480p", "720p", "1080p"]
         assert [c["value"] for c in opcoes["fps"]["choices"]] == [15, 30, 60]
         assert (opcoes["bitrate"]["min_value"], opcoes["bitrate"]["max_value"]) == (300, 8000)
-        assert not any(opcoes[n].get("required") for n in ("resolucao", "fps", "bitrate", "codec"))
+        assert not any(opcoes[n].get("required") for n in ("resolucao", "fps", "bitrate"))
+        assert "codec" not in opcoes  # H.264 por software desaba com imagem variada: não é mais uma opção
         assert comandos["transmitir"]["contexts"] == [0]  # guild_only
     finally:
         await bot.close()

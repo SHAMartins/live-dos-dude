@@ -134,7 +134,7 @@
     };
     video.addEventListener("loadedmetadata", medir);
     video.addEventListener("resize", medir);
-    tile.addEventListener("dblclick", () => alternarTelaCheia(tile));
+    tile.addEventListener("dblclick", () => alternarTelaCheia());
     tile.append(video, nome, resolucao);
     el.palco.append(tile);
     tiles.set(publicacao.trackSid, { tile, track });
@@ -175,9 +175,31 @@
     el.espectadores.hidden = true;
   }
 
-  function alternarTelaCheia(alvo = el.palco) {
-    if (document.fullscreenElement) document.exitFullscreen();
-    else alvo.requestFullscreen?.().catch(() => {});
+  // A tela cheia é da página inteira, não só do vídeo: assim a barra com volume e "sair da tela cheia"
+  // continua disponível (flutuando sobre o vídeo e sumindo sozinha quando o mouse para).
+  function alternarTelaCheia() {
+    if (document.fullscreenElement) document.exitFullscreen?.().catch(() => {});
+    else document.documentElement.requestFullscreen?.().catch(() => {});
+  }
+
+  let temporizadorControles = 0;
+  function mostrarControles() {
+    document.body.classList.remove("controles-ocultos");
+    clearTimeout(temporizadorControles);
+    if (!document.fullscreenElement) return;
+    temporizadorControles = setTimeout(() => {
+      // Não esconde com o mouse em cima da barra ou com o controle de volume em foco.
+      if (document.querySelector(".barra:hover, .barra:focus-within")) return mostrarControles();
+      document.body.classList.add("controles-ocultos");
+    }, 3000);
+  }
+
+  function aoMudarTelaCheia() {
+    const cheia = Boolean(document.fullscreenElement);
+    document.body.classList.toggle("em-tela-cheia", cheia);
+    el.telaCheia.title = cheia ? "Sair da tela cheia (F ou Esc)" : "Tela cheia (F)";
+    el.telaCheia.setAttribute("aria-label", cheia ? "Sair da tela cheia" : "Tela cheia");
+    mostrarControles();
   }
 
   async function entrar() {
@@ -186,7 +208,7 @@
       avisar("Não foi possível carregar o player", "Verifique sua conexão e tente de novo.", { tentar: true });
       return;
     }
-    const { Room, RoomEvent } = window.LivekitClient;
+    const { Room, RoomEvent, DisconnectReason } = window.LivekitClient;
 
     let acesso;
     try {
@@ -214,10 +236,15 @@
       .on(RoomEvent.Reconnecting, () => avisar("Reconectando…", "", { carregando: true }))
       .on(RoomEvent.Reconnected, atualizarEstado)
       .on(RoomEvent.AudioPlaybackStatusChanged, atualizarSom)
-      .on(RoomEvent.Disconnected, () => {
+      .on(RoomEvent.Disconnected, (razao) => {
         if (sala !== atual) return;
         limpar();
-        avisar("Desconectado", "A conexão com o vídeo caiu.", { tentar: true });
+        if (razao === DisconnectReason.ROOM_DELETED) {
+          // O servidor fecha a sala quando a transmissão acaba: não há o que tentar de novo.
+          avisar("A transmissão terminou", "Quem transmitia encerrou a live. Peça um link novo se ela voltar.");
+        } else {
+          avisar("Desconectado", "A conexão com o vídeo caiu.", { tentar: true });
+        }
       });
     try {
       await atual.connect(acesso.livekit_url, acesso.token);
@@ -233,6 +260,10 @@
   el.tentar.addEventListener("click", entrar);
   el.telaCheia.addEventListener("click", () => alternarTelaCheia());
   el.ativarSom.addEventListener("click", liberarSom);
+  document.addEventListener("fullscreenchange", aoMudarTelaCheia);
+  for (const evento of ["mousemove", "pointerdown", "touchstart", "keydown"]) {
+    document.addEventListener(evento, mostrarControles, { passive: true });
+  }
   el.mudo.addEventListener("click", alternarMudo);
   el.volumeNivel.addEventListener("input", () => {
     const valor = Number(el.volumeNivel.value) / 100;

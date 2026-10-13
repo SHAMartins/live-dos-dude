@@ -49,7 +49,6 @@ def criar_comandos(servico: ServicoTransmissao, config: Config) -> list[app_comm
         resolucao="Padrão: o da sala (720p)",
         fps="Quadros por segundo. Padrão: o da sala (30)",
         bitrate="Bitrate máximo em kbps. Padrão: o da sala (2500)",
-        codec="VP8 é o padrão; H.264 gasta menos CPU de quem assiste",
     )
     @app_commands.autocomplete(sala=autocompletar_sala)
     @app_commands.guild_only()
@@ -59,7 +58,6 @@ def criar_comandos(servico: ServicoTransmissao, config: Config) -> list[app_comm
         resolucao: Literal["480p", "720p", "1080p"] | None = None,
         fps: Literal[15, 30, 60] | None = None,
         bitrate: app_commands.Range[int, 300, 8000] | None = None,
-        codec: Literal["vp8", "h264"] | None = None,
     ) -> None:
         usuario = _usuario(interaction)
         if not tem_permissao(interaction.user, config.cargo_transmissor):
@@ -75,7 +73,7 @@ def criar_comandos(servico: ServicoTransmissao, config: Config) -> list[app_comm
         # Daqui em diante pode passar dos 3 s que o Discord dá para responder.
         await interaction.response.defer(thinking=True)
         try:
-            sessao = await servico.transmitir(usuario, PedidoTransmissao(sala, resolucao, fps, bitrate, codec))
+            sessao = await servico.transmitir(usuario, PedidoTransmissao(sala, resolucao, fps, bitrate))
         except ErroTransmissao as erro:
             await interaction.followup.send(f"❌ {erro}")
             return

@@ -86,6 +86,22 @@ O usuário trocou fonte ou qualidade no PC com a transmissão no ar (mesma sess�
    "video": {"largura": 1920, "altura": 1080, "fps": 60, "bitrate_kbps": 6000, "codec": "vp8"}}
 ```
 
+Telemetria: a cada ~10 s, **só enquanto transmite**. O backend apenas registra no log (uma linha por
+amostra, `grep telemetria`); serve para achar o gargalo de uma live sem depender de print. Todos os campos
+de medida são opcionais (ex.: `gpu_pct` só existe em placas NVIDIA):
+
+```json
+→ {"tipo": "telemetria", "sessao_id": "9f2c…", "versao": "0.1.2", "captura": "dxgi",
+   "captura_fps": 29.5, "captura_ms": 11.2, "alvo_fps": 30,
+   "enviado_fps": 29.1, "encode_ms": 6.8, "codificador": "libvpx", "limite": "nenhum",
+   "largura": 1280, "altura": 720,
+   "cpu_app_pct": 7.5, "cpu_sistema_pct": 62.0, "gpu_pct": 88.0, "nucleos": 12}
+```
+
+Como ler: `captura_fps` abaixo do `alvo_fps` com `captura_ms` alto = a captura é o gargalo (comum com a GPU
+saturada pelo jogo); `captura_fps` bom e `enviado_fps` baixo / `limite=cpu` = o encoder; `cpu_sistema_pct`
+perto de 100 = o PC inteiro está saturado.
+
 ## 4. Erros e fechamento
 
 Antes de fechar, o backend manda `{"tipo": "erro", "codigo": "...", "mensagem": "..."}`.

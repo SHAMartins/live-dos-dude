@@ -20,7 +20,7 @@ COR = 0xE5484D
 COMANDOS = [
     ("/parear", "Gera um código de 6 caracteres (vale 5 min, uso único) para ligar o app do seu PC à sua conta. "
                 "Só você vê a resposta."),
-    ("/transmitir sala:<nome> [resolucao] [fps] [bitrate] [codec]",
+    ("/transmitir sala:<nome> [resolucao] [fps] [bitrate]",
      "Liga a transmissão da tela do **seu** PC e posta o link **Assistir**. O que você digitar vale só "
      "dessa vez; o resto vem da configuração do app."),
     ("/parar", "Encerra a sua transmissão. O link para de funcionar."),

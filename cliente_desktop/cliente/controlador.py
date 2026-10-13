@@ -8,7 +8,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Protocol
 
-from cliente import protocolo as proto
+from cliente import VERSAO, protocolo as proto
 from cliente.conexao import Backoff, ConexaoBackend, Identidade
 from cliente.config import CAIXAS, ConfigCliente
 from cliente.credenciais import Credenciais
@@ -18,6 +18,8 @@ log = logging.getLogger(__name__)
 
 # Abaixo dos 20 s que o backend espera pelo 'resultado', para a resposta chegar antes do prazo dele.
 TIMEOUT_INICIO_S = 15.0
+# De quanto em quanto tempo o PC manda uma amostra de desempenho ao backend enquanto transmite.
+INTERVALO_TELEMETRIA_S = 10.0
 
 
 @dataclass(frozen=True)
@@ -47,6 +49,7 @@ class Publicador(Protocol):
                       fonte: dict | None, ao_cair: Callable[[str], None]) -> InfoPublicacao: ...
     async def trocar(self, parametros: ParametrosMidia, fonte: dict | None) -> InfoPublicacao: ...
     async def parar(self) -> None: ...
+    async def telemetria(self) -> dict | None: ...
 
 
 def mesclar(comando: proto.Iniciar, config: ConfigCliente) -> ParametrosMidia:
@@ -99,7 +102,24 @@ class Controlador:
         return self._sessao_id
 
     async def executar(self) -> None:
-        await self.conexao.executar()
+        telemetria = asyncio.create_task(self._laco_telemetria())
+        try:
+            await self.conexao.executar()
+        finally:
+            telemetria.cancel()
+
+    async def _laco_telemetria(self) -> None:
+        while True:
+            await asyncio.sleep(INTERVALO_TELEMETRIA_S)
+            sessao = self._sessao_id
+            if sessao is None:
+                continue
+            try:
+                dados = await self.publicador.telemetria()
+                if dados:
+                    await self.conexao.enviar(proto.Telemetria(sessao_id=sessao, versao=VERSAO, **dados))
+            except Exception:  # noqa: BLE001 - telemetria nunca atrapalha a transmissão
+                log.debug("falha ao coletar/enviar telemetria", exc_info=True)
 
     # --- ações da UI ----------------------------------------------------------
 

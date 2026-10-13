@@ -82,6 +82,26 @@ body {
   cursor: pointer;
 }
 .botao-icone:hover { background: #1d2127; }
+.botao-tela-cheia { width: auto; min-width: 36px; padding: 0 9px; gap: 8px; display: inline-flex; align-items: center; }
+.botao-tela-cheia .icone-sair, .botao-tela-cheia .texto-sair { display: none; }
+.em-tela-cheia .botao-tela-cheia .icone-entrar { display: none; }
+.em-tela-cheia .botao-tela-cheia .icone-sair { display: block; }
+.em-tela-cheia .botao-tela-cheia .texto-sair { display: inline; font-size: 13px; font-weight: 600; }
+
+/* Em tela cheia a barra (volume, sair da tela cheia) flutua sobre o vídeo e some sozinha quando o mouse para. */
+body.em-tela-cheia { grid-template-rows: 1fr; }
+body.em-tela-cheia .barra {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 5;
+  background: rgba(15, 17, 20, 0.82);
+  backdrop-filter: blur(6px);
+  transition: opacity 0.25s, transform 0.25s;
+}
+body.em-tela-cheia.controles-ocultos .barra { opacity: 0; transform: translateY(-100%); pointer-events: none; }
+body.em-tela-cheia.controles-ocultos { cursor: none; }
 .botao-icone:focus-visible, .botao:focus-visible { outline: 2px solid var(--texto); outline-offset: 2px; }
 
 .volume { flex: none; display: flex; align-items: center; gap: 8px; }

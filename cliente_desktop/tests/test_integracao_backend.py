@@ -18,6 +18,32 @@ async def _esperar(condicao, timeout: float = 3.0) -> None:
             await asyncio.sleep(0.02)
 
 
+async def test_telemetria_chega_ao_log_do_backend_so_durante_a_transmissao(backend, criar_cliente, monkeypatch, caplog):
+    import logging
+
+    from cliente import controlador
+
+    monkeypatch.setattr(controlador, "INTERVALO_TELEMETRIA_S", 0.1)
+    caplog.set_level(logging.INFO, logger="app.api.ws_cliente")
+    cliente = criar_cliente(publicador=PublicadorFalso())
+    await parear(backend, cliente)
+    await asyncio.sleep(0.4)
+    assert not [r for r in caplog.records if "telemetria" in r.getMessage()]  # parado: nada é enviado
+
+    await backend.servico.transmitir(FULANO, PedidoTransmissao("tele"))
+    await cliente.esperar(Estado.TRANSMITINDO)
+
+    async def chegou() -> bool:
+        return any("telemetria" in r.getMessage() for r in caplog.records)
+
+    await _esperar(chegou)
+    linha = next(r.getMessage() for r in caplog.records if "telemetria" in r.getMessage())
+    assert "captura falsa 29.5/30 fps (11.2 ms/quadro)" in linha
+    assert "enviado 29.1 fps, encode 6.8 ms (libvpx) 1280x720" in linha
+    assert "CPU app 8% sistema 62% GPU 88% (12 threads)" in linha
+    assert "app 0.1.2" in linha
+
+
 async def test_sem_token_pede_pareamento_sem_tentar_conectar(backend, criar_cliente):
     cliente = criar_cliente()
     snapshot = await cliente.esperar(Estado.PRECISA_PAREAR)
@@ -100,8 +126,8 @@ async def test_transmitir_aciona_o_publicador_com_os_parametros(backend, criar_c
     iniciado = cliente.publicador.iniciados[0]
     assert iniciado.sala == "dev"
     p = iniciado.parametros
-    assert (p.alvo_largura, p.alvo_altura, p.fps, p.bitrate_kbps, p.codec) == (1920, 1080, 60, 6000, "h264")
-    assert (snapshot.sala, snapshot.resolucao, snapshot.codec) == ("dev", (1920, 1080), "h264")
+    assert (p.alvo_largura, p.alvo_altura, p.fps, p.bitrate_kbps, p.codec) == (1920, 1080, 60, 6000, "vp8")
+    assert (snapshot.sala, snapshot.resolucao, snapshot.codec) == ("dev", (1920, 1080), "vp8")
     assert cliente.controlador.sessao_id == sessao.id
 
 

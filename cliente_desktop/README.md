@@ -60,6 +60,10 @@ descompactaria ~200 MB a cada abertura; a pasta abre em ~1 s.
   reinstalar sem `/parear`).
 - **Aviso do Windows na primeira vez** ("O Windows protegeu o computador"): o executável não tem
   assinatura digital (certificado pago). É só clicar em *Mais informações → Executar assim mesmo*.
+- **Fechar a janela (✕):** por padrão **pergunta** se mantém na bandeja (o app continua rodando para receber o
+  `/transmitir`) ou se sai de vez, e avisa quando há uma transmissão no ar. Dá para lembrar a escolha, e depois
+  mudar em *Conexão → Ao fechar a janela* (Perguntar / Manter na bandeja / Sair do app). Sair encerra a
+  transmissão, fecha a sala e termina o processo.
 - **Iniciar com o Windows:** caixa na seção *Conexão* da janela (só no executável; grava em
   `HKCU\...\Run`, sem precisar de administrador).
 - **`LiveDosDude.exe --diagnostico`** confere LiveKit, Tk, cofre de credenciais, capturas, bandeja e som e
@@ -108,6 +112,35 @@ capturam a sua tela, e o ponta a ponta (`livekit`) precisa do LiveKit local
 | Encode | `ENCODER_BACKEND_SOFTWARE`, sem simulcast | Restrição do projeto. O teste ponta a ponta confirma `libvpx` e `power_efficient_encoder=false` |
 | Entrega | `VideoFrame` de um array 1D | Com array 3D o SDK copia o quadro inteiro de novo |
 | Som | WASAPI **loopback por processo** excluindo a árvore do Discord, PCM 48 kHz estéreo, Opus 128 kbps sem DTX | Todo o som do PC menos as vozes da call (como o Go Live do Discord). O Discord é procurado a cada 2 s; se abrir/fechar no meio, a captura é refeita. Precisa do Windows 10 2004+; sem isso a transmissão segue sem som. Discord no navegador não dá para separar |
+
+### Conteúdo variado (0.1.2): o H.264 por software desaba
+
+Medido depois de uma live em que o fps caiu quando a imagem ficou "ocupada". Mesma máquina, VP8 e H.264
+(OpenH264, software) lado a lado, 720p a 30 fps e 2500 kbps, com cinco tipos de tela. "Enviado" é o que o
+encoder realmente produziu; a captura entregou 30 fps em todos os casos.
+
+| Conteúdo | VP8 enviado | VP8 encode | H.264 enviado | H.264 encode |
+|---|---|---|---|---|
+| Tela parada | 30,0 fps | 2,1 ms | 29,1 fps | 8,3 ms |
+| Movimento moderado | 30,0 fps | 4,1 ms | 30,0 fps | 6,6 ms |
+| Giro rápido com muito detalhe (jogo) | 30,0 fps | 4,7 ms | **3,7 fps** | **41 ms** |
+| Cada quadro todo diferente (partículas, neve) | 30,0 fps | 5,1 ms | **3,1 fps** | **43 ms** |
+| Troca de cena a cada 12 quadros (menus, mapa) | 30,0 fps | 5,1 ms | **6,8 fps** | **25 ms** |
+
+Com movimento simples os dois parecem iguais; com imagem variada o H.264 não segura nem 30 fps. **Por isso toda
+transmissão sai em VP8** (o backend troca `h264` por `vp8` e o app também), e a opção `codec` saiu do
+`/transmitir`.
+
+VP8 em outras configurações (mesmos cinco conteúdos; CPU do app em % de um núcleo):
+
+| Configuração | Parado | Moderado | Giro detalhado | Ruído total | Cortes de cena |
+|---|---|---|---|---|---|
+| 720p · 60 fps · 4000 kbps | 93% / 60 fps | 118% / 60 fps | 116% / 60 fps | 129% / 60 fps | 129% / 59 fps |
+| 1080p · 30 fps · 4500 kbps | 88% / 30 fps | 129% / 30 fps | 82% / **11 fps** | 92% / **14 fps** | 100% / **20 fps** |
+
+No 1080p com imagem variada a CPU nem está no limite (o encoder gasta ~10 ms por quadro): o fps cai porque os
+4500 kbps não pagam quadros inteiros novos, então o WebRTC descarta quadros. **720p é o ponto seguro**; 1080p
+só com bitrate bem mais alto (e upload para isso).
 
 ### CPU total do app em jogo (0.1.1)
 

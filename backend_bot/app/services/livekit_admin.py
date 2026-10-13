@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from urllib.parse import urlsplit, urlunsplit
 
@@ -10,6 +11,11 @@ from livekit import api
 from app.config import Config
 
 log = logging.getLogger(__name__)
+
+# Vida da sala vazia. O LiveKit padrão espera ~5 min com a sala sem ninguém; aqui ela some logo.
+EMPTY_TIMEOUT_S = 120      # ninguém entrou depois de criada
+DEPARTURE_TIMEOUT_S = 15   # o último participante saiu
+PRAZO_ADMIN_S = 4          # a API administrativa não pode travar o /transmitir nem o /parar
 
 
 def url_http(livekit_url: str) -> str:
@@ -28,6 +34,32 @@ class AdminLiveKit:
     @classmethod
     def de_config(cls, config: Config) -> AdminLiveKit:
         return cls(config.livekit_url, config.livekit_api_key, config.livekit_api_secret.get_secret_value())
+
+    async def criar_sala(self, sala: str) -> bool:
+        """Cria a sala já com tempos curtos de vida vazia. Idempotente; falhar não impede a transmissão
+        (o LiveKit cria a sala sozinho quando o PC entra, só que com os tempos padrão)."""
+        try:
+            async with api.LiveKitAPI(self._url, self._key, self._secret) as lk:
+                await asyncio.wait_for(lk.room.create_room(api.CreateRoomRequest(
+                    name=sala, empty_timeout=EMPTY_TIMEOUT_S, departure_timeout=DEPARTURE_TIMEOUT_S)), PRAZO_ADMIN_S)
+            return True
+        except Exception as erro:  # noqa: BLE001 - LiveKit fora do ar não pode quebrar o /transmitir
+            log.warning("não foi possível criar a sala %s no LiveKit: %s", sala, erro)
+            return False
+
+    async def fechar_sala(self, sala: str) -> bool:
+        """Fecha a sala no servidor (quem ainda estiver nela é desconectado). False se já não existia."""
+        try:
+            async with api.LiveKitAPI(self._url, self._key, self._secret) as lk:
+                await asyncio.wait_for(lk.room.delete_room(api.DeleteRoomRequest(room=sala)), PRAZO_ADMIN_S)
+            return True
+        except api.TwirpError as erro:
+            if erro.code != api.TwirpErrorCode.NOT_FOUND:
+                log.warning("LiveKit recusou fechar a sala %s: %s", sala, erro)
+            return False
+        except Exception as erro:  # noqa: BLE001
+            log.warning("não foi possível fechar a sala %s no LiveKit: %s", sala, erro)
+            return False
 
     async def remover_participante(self, sala: str, identidade: str) -> bool:
         """Derruba alguém da sala pelo servidor. Devolve False se não estava lá ou se o LiveKit não respondeu."""

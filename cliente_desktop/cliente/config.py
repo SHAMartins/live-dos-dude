@@ -42,6 +42,8 @@ class ConfigCliente:
     # O que sacrificar quando falta banda ou CPU: "resolucao" mantém o fps (jogos),
     # "fps" mantém a nitidez (texto, código).
     sacrificar: Literal["resolucao", "fps"] = "fps"
+    # O que o ✕ da janela faz: "perguntar", "bandeja" (continua rodando, para receber o /transmitir) ou "sair".
+    ao_fechar: Literal["perguntar", "bandeja", "sair"] = "perguntar"
 
     @classmethod
     def carregar(cls, caminho: Path = PASTA_DADOS / "config.json") -> ConfigCliente:
