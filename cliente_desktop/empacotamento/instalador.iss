@@ -9,6 +9,7 @@
 #endif
 #define NomeApp "Live dos Dude"
 #define ExeApp "LiveDosDude.exe"
+#define MutexApp "LiveDosDudeCliente"
 
 [Setup]
 ; Nunca mude o AppId: é ele que faz uma versão nova atualizar a instalada (em vez de instalar duas).
@@ -35,9 +36,10 @@ ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 MinVersion=10.0
 ShowLanguageDialog=no
-; O app cria este mutex (cliente/__main__.py): instalar ou desinstalar com ele aberto pede para fechá-lo.
-AppMutex=LiveDosDudeCliente
-CloseApplications=yes
+; Sem AppMutex nem CloseApplications de propósito: o app fica na bandeja, sem janela, então a caixa padrão
+; ("feche todas as instâncias") deixava a pessoa presa, até no modo silencioso. Quem fecha o app é o [Code]
+; abaixo (InitializeSetup / InitializeUninstall), pelo mutex que o app cria em cliente/__main__.py.
+CloseApplications=no
 RestartApplications=no
 
 [Languages]
@@ -66,6 +68,53 @@ Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueType: 
 Filename: "{app}\{#ExeApp}"; Description: "Abrir o {#NomeApp} agora"; Flags: nowait postinstall skipifsilent
 
 [Code]
+function AppAberto: Boolean;
+begin
+  Result := CheckForMutexes('{#MutexApp}');
+end;
+
+{ Fecha o app (que costuma estar escondido na bandeja) e espera o mutex sumir, até ~5 s. }
+procedure FecharApp;
+var
+  Codigo, Tentativa: Integer;
+begin
+  Exec(ExpandConstant('{sys}\taskkill.exe'), '/F /IM {#ExeApp}', '', SW_HIDE, ewWaitUntilTerminated, Codigo);
+  for Tentativa := 1 to 20 do
+  begin
+    if not AppAberto then
+      Exit;
+    Sleep(250);
+  end;
+end;
+
+function InitializeSetup(): Boolean;
+begin
+  Result := True;
+  if AppAberto then
+  begin
+    if not WizardSilent then
+      Result := MsgBox('O Live dos Dude está aberto (na bandeja do Windows).' + #13#10 + #13#10 +
+                       'Para continuar ele será fechado. Se estiver transmitindo, a transmissão termina.',
+                       mbConfirmation, MB_OKCANCEL) = IDOK;
+    if Result then
+      FecharApp;
+  end;
+end;
+
+function InitializeUninstall(): Boolean;
+begin
+  Result := True;
+  if AppAberto then
+  begin
+    if not UninstallSilent then
+      Result := MsgBox('O Live dos Dude está aberto (na bandeja do Windows).' + #13#10 + #13#10 +
+                       'Para desinstalar ele será fechado. Se estiver transmitindo, a transmissão termina.',
+                       mbConfirmation, MB_OKCANCEL) = IDOK;
+    if Result then
+      FecharApp;
+  end;
+end;
+
 procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
 var
   Codigo: Integer;
