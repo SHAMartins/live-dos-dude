@@ -82,8 +82,24 @@ async def _handshake(ws: Websocket, servico: ServicoTransmissao) -> ConexaoClien
     await servico.ao_conectar(dispositivo, sessao_do_cliente)
     conexao = ConexaoCliente(dispositivo)
     conexao.enviar(boas_vindas)
-    log.info("PC '%s' de %s conectado", dispositivo.nome, dispositivo.usuario_nome)
+    log.info("PC '%s' de %s conectado (app %s)", dispositivo.nome, dispositivo.usuario_nome,
+             getattr(mensagem, "versao_cliente", "?"))
     return conexao
+
+
+def _fmt(valor, formato: str = ".1f") -> str:
+    return "?" if valor is None else format(valor, formato)
+
+
+def registrar_telemetria(nome: str, m: proto.Telemetria) -> None:
+    """Uma linha por amostra, pensada para ler em `docker compose logs | grep telemetria`."""
+    log.info(
+        "telemetria '%s' app %s sessão %s | captura %s %s/%s fps (%s ms/quadro) | enviado %s fps, encode %s ms (%s) %sx%s"
+        " | limite=%s | CPU app %s%% sistema %s%% GPU %s%% (%s threads)",
+        nome, m.versao, (m.sessao_id or "?")[:8], m.captura or "?", _fmt(m.captura_fps), _fmt(m.alvo_fps, "d"),
+        _fmt(m.captura_ms), _fmt(m.enviado_fps), _fmt(m.encode_ms), m.codificador or "?",
+        _fmt(m.largura, "d"), _fmt(m.altura, "d"), m.limite or "?", _fmt(m.cpu_app_pct, ".0f"),
+        _fmt(m.cpu_sistema_pct, ".0f"), _fmt(m.gpu_pct, ".0f"), _fmt(m.nucleos, "d"))
 
 
 async def _receber(ws: Websocket, conexao: ConexaoCliente, servico: ServicoTransmissao) -> None:
@@ -99,6 +115,8 @@ async def _receber(ws: Websocket, conexao: ConexaoCliente, servico: ServicoTrans
             await servico.ao_encerrar_transmissao(conexao.dispositivo, mensagem)
         elif isinstance(mensagem, proto.TransmissaoAtualizada):
             await servico.ao_atualizar_transmissao(conexao.dispositivo, mensagem)
+        elif isinstance(mensagem, proto.Telemetria):
+            registrar_telemetria(conexao.dispositivo.nome, mensagem)
         else:
             conexao.receber(mensagem)
 

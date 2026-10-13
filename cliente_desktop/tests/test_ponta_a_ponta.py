@@ -89,6 +89,16 @@ async def test_transmitir_pelo_backend_e_um_espectador_recebe_a_tela(backend, cr
         assert saida.encoder_implementation == "libvpx"
         assert not saida.power_efficient_encoder
 
+        # Telemetria com o encoder de verdade: a primeira amostra só marca o ponto de partida dos deltas.
+        await publicador.telemetria()
+        await asyncio.sleep(1.5)
+        amostra = await publicador.telemetria()
+        assert amostra["codificador"] == "libvpx" and amostra["captura"] == "dxgi"
+        assert amostra["enviado_fps"] > 0 and amostra["encode_ms"] >= 0
+        assert amostra["limite"] in {"nenhum", "cpu", "banda", "outro"}
+        assert amostra["largura"] == esperado[0] and amostra["altura"] == esperado[1]
+        assert 0 <= amostra["cpu_app_pct"] <= 100 and 0 <= amostra["cpu_sistema_pct"] <= 100
+
         # O som chega como áudio de compartilhamento de tela, estéreo a 48 kHz.
         som, publicacao = await asyncio.wait_for(recebidas[rtc.TrackKind.KIND_AUDIO], 10)
         assert publicacao.source == rtc.TrackSource.SOURCE_SCREENSHARE_AUDIO

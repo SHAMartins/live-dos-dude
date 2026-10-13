@@ -118,6 +118,11 @@ class PublicadorFalso:
     async def parar(self) -> None:
         self.paradas += 1
 
+    async def telemetria(self) -> dict | None:
+        return {"captura": "falsa", "captura_fps": 29.5, "captura_ms": 11.2, "alvo_fps": 30, "enviado_fps": 29.1,
+                "encode_ms": 6.8, "codificador": "libvpx", "limite": "nenhum", "largura": 1280, "altura": 720,
+                "cpu_app_pct": 7.5, "cpu_sistema_pct": 62.0, "gpu_pct": 88.0, "nucleos": 12}
+
     def _info(self, p: ParametrosMidia) -> InfoFalsa:
         largura, altura = min(p.alvo_largura, 1920), min(p.alvo_altura, 1080)
         return InfoFalsa(self._sala, largura, altura, p.fps, p.bitrate_kbps, p.codec)

@@ -74,9 +74,33 @@ class TransmissaoAtualizada(_Mensagem):
     video: ParametrosVideo
 
 
+class Telemetria(_Mensagem):
+    """Amostra de desempenho que o PC manda a cada ~10 s enquanto transmite. Só vai para o log do backend:
+    serve para descobrir se o gargalo é a captura, o encoder, a CPU/GPU do jogo ou a rede."""
+
+    tipo: Literal["telemetria"] = "telemetria"
+    sessao_id: str | None = Field(default=None, max_length=64)
+    versao: str = Field(default="?", max_length=32)
+    captura: str = Field(default="", max_length=16)              # dxgi, gdi ou janela
+    captura_fps: float | None = None                              # quadros/s que a captura realmente entrega
+    captura_ms: float | None = None                               # ms por quadro: captura + redução + entrega
+    alvo_fps: int | None = None
+    enviado_fps: float | None = None                              # quadros/s que o encoder produziu
+    encode_ms: float | None = None                                # ms médios por quadro no encoder
+    codificador: str | None = Field(default=None, max_length=32)  # libvpx, OpenH264...
+    limite: str | None = Field(default=None, max_length=16)       # nenhum | cpu | banda | outro
+    largura: int | None = None
+    altura: int | None = None
+    cpu_app_pct: float | None = None                              # % da CPU inteira usada pelo app
+    cpu_sistema_pct: float | None = None                          # % da CPU inteira usada por tudo (jogo incluso)
+    gpu_pct: float | None = None                                  # uso da GPU (NVIDIA; None nas demais)
+    nucleos: int | None = None
+
+
 HANDSHAKE = TypeAdapter(Annotated[Hello | Parear, Field(discriminator="tipo")])
 DO_CLIENTE = TypeAdapter(
-    Annotated[Ack | Resultado | TransmissaoEncerrada | TransmissaoAtualizada, Field(discriminator="tipo")]
+    Annotated[Ack | Resultado | TransmissaoEncerrada | TransmissaoAtualizada | Telemetria,
+              Field(discriminator="tipo")]
 )
 
 
