@@ -21,7 +21,7 @@ O cliente **guarda o `device_token`** (ele só é enviado uma vez; o backend gua
 Nas conexões seguintes:
 
 ```json
-→ {"tipo": "hello", "v": 1, "device_token": "<segredo>", "versao_cliente": "0.1.0", "sessao_ativa": null}
+→ {"tipo": "hello", "v": 1, "device_token": "<segredo>", "versao_cliente": "0.1.1", "sessao_ativa": null}
 ← {"tipo": "bem_vindo", "usuario": "Fulano", "dispositivo": "PC-Sala"}
 ```
 

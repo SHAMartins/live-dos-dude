@@ -65,7 +65,7 @@ Passo a passo em [backend_bot/README.md](backend_bot/README.md#deploy-vm-própri
 - [ ] **[você]** Teste manual com o Discord real: `/parear` → digitar o código na janela → `/transmitir` → assistir → parar pela bandeja ([como rodar](cliente_desktop/README.md#rodar))
 - [ ] **[você]** Atualizar o Python para a última 3.13.x: o 3.13.0 tem um bug do Tk dentro de venvs (há um contorno no código, mas é melhor não depender dele)
 - [ ] **[você]** Se usar escala de tela 125%/150%, conferir se o cursor aparece no lugar certo (só testei em 100%)
-- [ ] **[você]** Distribuir o instalador: está na [release v0.1.0](https://github.com/SHAMartins/live-dos-dude/releases/latest), mas o repositório é **privado**, então só baixa quem tiver acesso. Escolher: convidar os amigos como colaboradores (leitura), deixar o repositório público ou mandar o `.exe` por Drive
+- [ ] **[você]** Distribuir o instalador: está na [última release](https://github.com/SHAMartins/live-dos-dude/releases/latest) (hoje a v0.1.1), mas o repositório é **privado**, então só baixa quem tiver acesso. Escolher: convidar os amigos como colaboradores (leitura), deixar o repositório público ou mandar o `.exe` por Drive
 - [ ] **[código]** (evolução) Assinatura digital do `.exe` (tira o aviso do SmartScreen; certificado é pago)
 - [ ] **[você]** Testar a 0.1.1 em jogo: transmitir em 720p/30 fps, olhar "CPU do app" na janela e os fps do jogo (se ainda pesar, dizer qual jogo e quanto de CPU aparece)
 - [ ] **[código]** (evolução) Reduzir ainda mais: redução da imagem na GPU (shader D3D11) tiraria os ~8 ms de CPU por quadro, mas usa a GPU que o jogo precisa; decidir se vale
@@ -83,6 +83,7 @@ Passo a passo em [backend_bot/README.md](backend_bot/README.md#deploy-vm-própri
 
 - [x] 2026-10-12: **CPU alta em jogo**: a redução da imagem (`INTER_AREA`) era o maior gasto do app; trocada por `INTER_LINEAR` (em 2 passos nas reduções fortes): -30% de CPU em 720p (226% → 161% a 60 fps; 123% → 85% a 30 fps), sem perda visível (46 dB). A janela mostra "CPU do app: N%" e avisa quando 60 fps/1080p pesam. Prioridade baixa do processo testada e descartada (sem ganho consistente). Versão 0.1.1
 - [x] 2026-10-12: **Correção: som não tocava para quem já tinha aberto a página antes** (o navegador guardava o JavaScript antigo por 12 h). Os estáticos agora vão com `?v=<hash do conteúdo>` e o HTML com `no-cache`; backend na VM atualizado; 70 testes
+- [x] 2026-10-12: **Release v0.1.1 no GitHub** (instalador e zip com a redução de CPU; a v0.1.0 continua listada)
 - [x] 2026-10-12: **Release v0.1.0 no GitHub** com o instalador e o zip (SHA-256 nas notas); README com botão de download no topo
 - [x] 2026-10-12: **Instalador e desinstalador** (Inno Setup, por usuário, sem administrador): testado em modo silencioso: instala, `--diagnostico` OK, transmite tela + som pelo app instalado, desinstala sem deixar pasta, atalho nem registro (e preserva o pareamento)
 - [x] 2026-10-12: **Som da transmissão sem as vozes do Discord**: loopback por processo do Windows excluindo o Discord, caixa "Transmitir o som do PC" no app, volume/mudo na página do espectador (salvo no navegador), `--diagnostico` confere o som; backend na VM atualizado; 45 + 69 testes
