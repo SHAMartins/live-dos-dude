@@ -68,6 +68,7 @@ Passo a passo em [backend_bot/README.md](backend_bot/README.md#deploy-vm-própri
 - [ ] **[você]** Distribuir o instalador: está na [última release](https://github.com/SHAMartins/live-dos-dude/releases/latest) (hoje a v0.1.1), mas o repositório é **privado**, então só baixa quem tiver acesso. Escolher: convidar os amigos como colaboradores (leitura), deixar o repositório público ou mandar o `.exe` por Drive
 - [ ] **[código]** (evolução) Assinatura digital do `.exe` (tira o aviso do SmartScreen; certificado é pago)
 - [ ] **[você]** Testar a 0.1.1 em jogo: transmitir em 720p/30 fps, olhar "CPU do app" na janela e os fps do jogo (se ainda pesar, dizer qual jogo e quanto de CPU aparece)
+- [ ] **[você]** Decidir sobre codificação na GPU, depois de testar a 0.1.1 em jogo. Investigado em [docs/codificacao-na-gpu.md](docs/codificacao-na-gpu.md): o SDK atual não tem NVENC compilado (cai em software), mas o modo pass-through funciona e o `h264_mf` usa a GPU; ganho medido ~40% em 720p60, com limitações
 - [ ] **[código]** (evolução) Reduzir ainda mais: redução da imagem na GPU (shader D3D11) tiraria os ~8 ms de CPU por quadro, mas usa a GPU que o jogo precisa; decidir se vale
 - [ ] **[você]** Testar o som numa live real: tocar música/jogo **e** falar numa call do Discord; quem assiste deve ouvir só o jogo
 - [ ] **[código]** (evolução) Escolher de quais apps vem o som (hoje: tudo menos o Discord)
