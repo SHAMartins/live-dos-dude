@@ -54,7 +54,13 @@ descompactaria ~200 MB a cada abertura; a pasta abre em ~1 s.
 - **Instalador** ([empacotamento/instalador.iss](empacotamento/instalador.iss)): instala só para o usuário,
   sem pedir administrador, em `%LOCALAPPDATA%\Programs\LiveDosDude`. Cria o atalho no Menu Iniciar e
   oferece atalho na área de trabalho e "Iniciar com o Windows". Instalar uma versão nova por cima atualiza
-  a anterior. Se o app estiver aberto, pede para fechá-lo.
+  a anterior. **Se o app estiver aberto (ele costuma ficar escondido na bandeja), o instalador e o
+  desinstalador avisam e o fecham sozinhos**, mesmo em modo silencioso. Antes da 0.1.2 usavam a caixa padrão
+  do Inno ("feche todas as instâncias"), que travava porque o app não tem janela para fechar.
+- **Testar o desinstalador:** use uma variante com outro `AppId`, outra pasta em `%LOCALAPPDATA%\Programs` e
+  outra pasta de dados, e sem chamar `--limpar-dados`. **Nunca rode o desinstalador interativo da instalação
+  real num teste automático:** a pergunta "Apagar também as configurações e o pareamento?" apaga o pareamento
+  do cofre do Windows (inclusive o do endereço padrão, mesmo com `APPDATA` redirecionado) e a pasta real de dados.
 - **Desinstalar** por *Configurações → Aplicativos → Live dos Dude*: tira o app, os atalhos e o
   "Iniciar com o Windows", e pergunta se apaga também as configurações e o pareamento (padrão: não, para
   reinstalar sem `/parear`).
