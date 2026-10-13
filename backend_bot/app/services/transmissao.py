@@ -206,6 +206,11 @@ class ServicoTransmissao:
 
             resolucao = pedido.resolucao or sala.resolucao
             codec = pedido.codec or sala.codec
+            # O H.264 do SDK é por software (OpenH264) e desaba com imagem variada: em 720p/30, com panorâmica ou
+            # ruído, entregou 3-7 fps (25-43 ms por quadro) enquanto o VP8 manteve 30 fps (~5 ms). Por isso toda
+            # transmissão sai em VP8. Medições: cliente_desktop/README.md ("Conteúdo variado").
+            if codec == "h264":
+                codec = "vp8"
             if resolucao not in RESOLUCOES or codec not in CODECS:
                 raise ErroTransmissao("Resolução ou codec não suportado.")
             fps = pedido.fps or sala.fps

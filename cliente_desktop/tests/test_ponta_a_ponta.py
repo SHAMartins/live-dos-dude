@@ -173,3 +173,20 @@ async def test_aplicar_agora_troca_tela_por_janela_e_o_espectador_continua(backe
     finally:
         await espectador.disconnect()
     assert (await backend.servico.parar(FULANO)).confirmado
+
+
+async def test_h264_pedido_sai_em_vp8_porque_o_openh264_desaba_com_imagem_variada(backend, midia):
+    from cliente.controlador import ParametrosMidia
+
+    publicador = Publicador(midia)
+    token = backend.servico.tokens.publicador(FULANO.discord_id, FULANO.nome, "h264-forcado")
+    info = await publicador.iniciar(backend.config.livekit_url, token, "h264-forcado",
+                                    ParametrosMidia(1280, 720, 30, 2000, "h264", False), None, lambda motivo: None)
+    try:
+        assert info.codec == "vp8"
+        await asyncio.sleep(2)  # as estatísticas do encoder só aparecem depois dos primeiros quadros
+        saida = next(s.outbound_rtp.outbound for s in await publicador.track.get_stats()
+                     if s.WhichOneof("stats") == "outbound_rtp")
+        assert saida.encoder_implementation == "libvpx"
+    finally:
+        await publicador.parar()

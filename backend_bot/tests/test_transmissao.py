@@ -18,13 +18,14 @@ async def test_transmitir_envia_iniciar_e_ativa_sessao(ambiente, cliente_pareado
     sessao = await ambiente.servico.transmitir(FULANO, PedidoTransmissao("dev", "1080p", 60, 6000, "h264"))
 
     assert sessao.estado == "ativa"
+    # H.264 é pedido, mas a transmissão sai em VP8 (o OpenH264 por software desaba com imagem variada).
     assert (sessao.sala, sessao.resolucao, sessao.fps, sessao.bitrate_kbps, sessao.codec) == \
-        ("dev", "1080p", 60, 6000, "h264")
+        ("dev", "1080p", 60, 6000, "vp8")
 
     iniciar = await cliente.esperar("iniciar")
     assert iniciar["id"] == sessao.id
     assert iniciar["livekit_url"] == ambiente.config.livekit_url
-    assert iniciar["video"] == {"largura": 1920, "altura": 1080, "fps": 60, "bitrate_kbps": 6000, "codec": "h264"}
+    assert iniciar["video"] == {"largura": 1920, "altura": 1080, "fps": 60, "bitrate_kbps": 6000, "codec": "vp8"}
     assert cliente.sessao_ativa == sessao.id
 
 

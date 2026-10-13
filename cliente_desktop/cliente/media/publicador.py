@@ -5,7 +5,7 @@ import logging
 import os
 import time
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 from livekit import rtc  # carregado na inicialização do app: o import da lib nativa trava o loop
 
@@ -164,11 +164,16 @@ class Publicador:
         largura_fonte, altura_fonte, nome_captura = await asyncio.wrap_future(self.midia.preparar(fonte))
         largura, altura = tamanho_de_saida(largura_fonte, altura_fonte, parametros.alvo_largura, parametros.alvo_altura)
 
+        # Só VP8: o H.264 por software (OpenH264) entrega 3-7 fps com imagem variada em 720p/30 (VP8: 30 fps).
+        # Vale também quando um backend antigo ainda pede h264.
+        if parametros.codec != "vp8":
+            log.warning("codec %s pedido; usando vp8 (o H.264 por software não aguenta imagem variada)", parametros.codec)
+            parametros = replace(parametros, codec="vp8")
         origem = rtc.VideoSource(largura, altura, is_screencast=True)
         track = rtc.LocalVideoTrack.create_video_track("tela", origem)
         opcoes = rtc.TrackPublishOptions(
             source=rtc.TrackSource.SOURCE_SCREENSHARE,
-            video_codec=rtc.VideoCodec.H264 if parametros.codec == "h264" else rtc.VideoCodec.VP8,
+            video_codec=rtc.VideoCodec.VP8,
             video_encoder="ENCODER_BACKEND_SOFTWARE",  # restrição do projeto: nada de NVENC/AMF
             simulcast=False,                            # simulcast triplicaria o custo de CPU
             video_encoding=rtc.VideoEncoding(max_framerate=parametros.fps, max_bitrate=parametros.bitrate_kbps * 1000),

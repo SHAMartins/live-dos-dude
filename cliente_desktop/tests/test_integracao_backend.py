@@ -126,8 +126,8 @@ async def test_transmitir_aciona_o_publicador_com_os_parametros(backend, criar_c
     iniciado = cliente.publicador.iniciados[0]
     assert iniciado.sala == "dev"
     p = iniciado.parametros
-    assert (p.alvo_largura, p.alvo_altura, p.fps, p.bitrate_kbps, p.codec) == (1920, 1080, 60, 6000, "h264")
-    assert (snapshot.sala, snapshot.resolucao, snapshot.codec) == ("dev", (1920, 1080), "h264")
+    assert (p.alvo_largura, p.alvo_altura, p.fps, p.bitrate_kbps, p.codec) == (1920, 1080, 60, 6000, "vp8")
+    assert (snapshot.sala, snapshot.resolucao, snapshot.codec) == ("dev", (1920, 1080), "vp8")
     assert cliente.controlador.sessao_id == sessao.id
 
 
