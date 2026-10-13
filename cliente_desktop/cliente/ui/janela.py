@@ -19,6 +19,7 @@ from cliente.estado import Estado, PainelEstado, Snapshot
 from cliente.ui.aparencia import COR, TITULO
 from cliente import sistema
 from cliente.ui.bandeja import Bandeja
+from cliente.ui.fechamento import ROTULOS, DialogoFechar, escolha_valida
 from cliente.ui.transmissao import PainelTransmissao
 
 INTERVALO_MS = 250
@@ -42,6 +43,8 @@ class Janela(ctk.CTk):
         ctk.set_appearance_mode("system")
         super().__init__()
         self._painel, self._acoes, self._pedidos = painel, acoes, pedidos
+        self._config = config
+        self._transmitindo = False
         self._estatisticas, self._bandeja = estatisticas, bandeja
         self._cpu_antes = (time.perf_counter(), time.process_time())
         self._cpu_pct = 0.0
@@ -51,7 +54,7 @@ class Janela(ctk.CTk):
         self.title("Live dos Dude")
         self.geometry("420x700")
         self.minsize(380, 520)
-        self.protocol("WM_DELETE_WINDOW", self.withdraw)  # fechar = continuar na bandeja
+        self.protocol("WM_DELETE_WINDOW", self._ao_fechar_janela)
         self.grid_columnconfigure(0, weight=1)
         self._montar(config)
         if iniciar_oculta:
@@ -60,6 +63,31 @@ class Janela(ctk.CTk):
         if icone.exists():  # o customtkinter troca o ícone por volta de 200 ms depois de abrir
             self.after(300, lambda: self.iconbitmap(str(icone)))
         self.after(0, self._tique)
+
+    # --- fechar a janela ---------------------------------------------------------
+
+    def _ao_fechar_janela(self) -> None:
+        escolha = escolha_valida(self._config.ao_fechar)
+        if escolha == "bandeja":
+            self.withdraw()
+        elif escolha == "sair":
+            self._acoes.sair()
+        else:
+            DialogoFechar(self, self._transmitindo, self._decidiu_fechar)
+
+    def _decidiu_fechar(self, escolha: str, lembrar: bool) -> None:
+        if lembrar:
+            self._config.ao_fechar = escolha  # type: ignore[assignment]
+            self._acoes.salvar_config()
+            self._opcao_fechar.set(ROTULOS[escolha])
+        if escolha == "bandeja":
+            self.withdraw()
+        else:
+            self._acoes.sair()  # encerra a transmissão (se houver) e fecha o app
+
+    def _mudou_ao_fechar(self, rotulo: str) -> None:
+        self._config.ao_fechar = next(k for k, v in ROTULOS.items() if v == rotulo)  # type: ignore[assignment]
+        self._acoes.salvar_config()
 
     # --- layout ---------------------------------------------------------------
 
@@ -140,14 +168,18 @@ class Janela(ctk.CTk):
             self._iniciar_com_windows.select()
         if not sistema.empacotado():
             self._iniciar_com_windows.configure(state="disabled", text="Iniciar com o Windows (só no executável)")
-        self._iniciar_com_windows.grid(row=6, column=0, sticky="w", padx=12, pady=(0, 12))
+        self._iniciar_com_windows.grid(row=6, column=0, sticky="w", padx=12, pady=(0, 6))
+        ctk.CTkLabel(ajustes, text="Ao fechar a janela", anchor="w").grid(row=7, column=0, sticky="ew", padx=12)
+        self._opcao_fechar = ctk.CTkOptionMenu(ajustes, values=list(ROTULOS.values()), command=self._mudou_ao_fechar)
+        self._opcao_fechar.set(ROTULOS[escolha_valida(config.ao_fechar)])
+        self._opcao_fechar.grid(row=8, column=0, sticky="ew", padx=12, pady=(0, 12))
 
         ajustes.grid_remove()
 
         rodape = ctk.CTkFrame(self, fg_color="transparent")
         rodape.grid(row=9, column=0, sticky="ew", padx=16, pady=(8, 12))
         rodape.grid_columnconfigure(0, weight=1)
-        ctk.CTkLabel(rodape, text="Fechar a janela mantém o app na bandeja.", anchor="w",
+        ctk.CTkLabel(rodape, text="Para encerrar de vez: Sair, ou ícone da bandeja → Sair.", anchor="w",
                      text_color=("gray40", "gray60"), font=ctk.CTkFont(size=11)).grid(row=0, column=0, sticky="ew")
         ctk.CTkButton(rodape, text="Sair", width=70, fg_color="transparent", border_width=1,
                       text_color=("gray20", "gray80"), command=self._acoes.sair).grid(row=0, column=1)
@@ -239,7 +271,8 @@ class Janela(ctk.CTk):
         else:
             self._quadro_ao_vivo.grid_remove()
 
-        self._painel_transmissao.definir_transmitindo(s.estado == Estado.TRANSMITINDO)
+        self._transmitindo = s.estado == Estado.TRANSMITINDO
+        self._painel_transmissao.definir_transmitindo(self._transmitindo)
         self._quadro_parear.grid() if s.estado == Estado.PRECISA_PAREAR else self._quadro_parear.grid_remove()
         # Sem conexão definida (ex.: endereço errado), abre a seção de conexão para corrigir.
         if s.estado in (Estado.CONECTANDO, Estado.BLOQUEADO) and not self._ajustes.winfo_ismapped():

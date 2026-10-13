@@ -52,3 +52,17 @@ def test_config_padrao_aponta_para_producao_e_aceita_bom(tmp_path):
     caminho = tmp_path / "config.json"
     caminho.write_bytes(b"\xef\xbb\xbf" + json.dumps({"fps": 60}).encode())  # como o Bloco de Notas salva
     assert ConfigCliente.carregar(caminho).fps == 60
+
+
+def test_ao_fechar_padrao_pergunta_e_persiste(tmp_path):
+    from cliente.config import ConfigCliente
+    from cliente.ui.fechamento import escolha_valida
+
+    caminho = tmp_path / "config.json"
+    config = ConfigCliente()
+    assert config.ao_fechar == "perguntar"
+    config.ao_fechar = "sair"
+    config.salvar(caminho)
+    assert ConfigCliente.carregar(caminho).ao_fechar == "sair"
+    assert escolha_valida("bandeja") == "bandeja"
+    assert escolha_valida("qualquer coisa") == "perguntar"  # config.json editado à mão

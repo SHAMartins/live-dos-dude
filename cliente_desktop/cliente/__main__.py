@@ -232,6 +232,11 @@ def main() -> None:
         bandeja.parar()
         ponte.parar()
         janela.destroy()
+        log.info("encerrado")
+        logging.shutdown()
+        # Sai direto: uma thread de fundo presa (captura de tela, áudio, FFI do LiveKit) não pode deixar o
+        # processo vivo e invisível depois de a pessoa mandar fechar.
+        os._exit(0)
 
 
 if __name__ == "__main__":
