@@ -142,11 +142,14 @@ class ServicoTransmissao:
 
     async def ao_conectar(self, dispositivo: Dispositivo, sessao_do_cliente: str | None) -> None:
         """O cliente é quem sabe o que está transmitindo: alinha o banco com ele."""
+        anterior = await self.repo.sessao_em_andamento(dispositivo.discord_id)
         encerradas = await self.repo.encerrar_sessoes_do_usuario(
             dispositivo.discord_id, "cliente reconectou sem esta transmissão", exceto=sessao_do_cliente
         )
         if encerradas:
             log.info("%d sessão(ões) de %s encerrada(s) na reconexão", encerradas, dispositivo.discord_id)
+            if anterior is not None:
+                await self._fechar_sala_se_vazia(anterior.sala)
         if sessao_do_cliente:
             await self.repo.atualizar_sessao(sessao_do_cliente, "ativa", discord_id=dispositivo.discord_id)
 
@@ -164,8 +167,21 @@ class ServicoTransmissao:
 
     async def ao_encerrar_transmissao(self, dispositivo: Dispositivo, evento: proto.TransmissaoEncerrada) -> None:
         motivo = evento.motivo or "encerrada pelo cliente"
+        sessao = await self.repo.sessao(evento.sessao_id)
         await self.repo.atualizar_sessao(evento.sessao_id, "encerrada", motivo, discord_id=dispositivo.discord_id)
         log.info("transmissão %s encerrada pelo cliente: %s", evento.sessao_id, motivo)
+        if sessao is not None and sessao.discord_id == dispositivo.discord_id:
+            await self._fechar_sala_se_vazia(sessao.sala)
+
+    async def _fechar_sala_se_vazia(self, sala: str) -> None:
+        """Sem nenhuma transmissão em andamento na sala, fecha a sala no LiveKit: quem ainda estava
+        assistindo é desconectado e a sala não fica ocupando o servidor. Se outra pessoa ainda transmite
+        nela, não mexe."""
+        if await self.repo.ha_sessao_em_andamento_na_sala(sala):
+            return
+        if await self.admin.fechar_sala(sala):
+            log.info("sala %s fechada no LiveKit (sem transmissões)", sala)
+        self._espectadores.pop(sala, None)
 
     # --- transmissão ----------------------------------------------------------
 
@@ -202,6 +218,7 @@ class ServicoTransmissao:
             # precisa mostrá-lo de novo. Só vale enquanto a sessão estiver ativa.
             chave = secrets.token_urlsafe(16)
             await self.repo.criar_sessao(sessao_id, usuario.discord_id, nome_sala, resolucao, fps, bitrate, codec, chave)
+            await self.admin.criar_sala(nome_sala)
             comando = proto.Iniciar(
                 id=sessao_id,
                 sala=nome_sala,
@@ -214,6 +231,7 @@ class ServicoTransmissao:
             resultado = await self._executar(usuario.discord_id, comando, self.config.timeout_inicio_s, sessao_id)
             if not resultado.ok:
                 await self.repo.atualizar_sessao(sessao_id, "falhou", resultado.detalhe)
+                await self._fechar_sala_se_vazia(nome_sala)
                 raise ErroTransmissao(f"O cliente desktop não conseguiu iniciar: {resultado.detalhe or 'erro desconhecido'}")
 
             await self.repo.atualizar_sessao(sessao_id, "ativa")
@@ -245,6 +263,7 @@ class ServicoTransmissao:
                        else "parada sem confirmação do PC; removido do LiveKit" if derrubado
                        else "parada sem confirmação do PC")
             await self.repo.atualizar_sessao(sessao.id, "encerrada", detalhe)
+            await self._fechar_sala_se_vazia(sessao.sala)
             return ResultadoParada(sessao, confirmado, derrubado)
 
     async def _executar(self, discord_id: int, comando: proto.Iniciar, timeout_resultado: float,
@@ -253,9 +272,11 @@ class ServicoTransmissao:
             return await self.gateway.comando(discord_id, comando, self.config.timeout_ack_s, timeout_resultado)
         except (ClienteOffline, ConexaoPerdida):
             await self.repo.atualizar_sessao(sessao_id, "falhou", "conexão com o PC caiu")
+            await self._fechar_sala_se_vazia(comando.sala)
             raise ErroTransmissao("A conexão com o seu PC caiu durante o pedido. Tente de novo.") from None
         except SemResposta as erro:
             await self.repo.atualizar_sessao(sessao_id, "falhou", f"sem resposta ({erro.fase})")
+            await self._fechar_sala_se_vazia(comando.sala)
             if erro.fase == "resultado":
                 # O PC confirmou mas não terminou a tempo: pede para parar, para não
                 # sobrar uma transmissão órfã que ninguém controla.
@@ -303,6 +324,7 @@ class ServicoTransmissao:
             return
         await self.repo.atualizar_sessao(sessao.id, "encerrada", "o PC saiu do LiveKit")
         log.info("transmissão %s encerrada: o PC saiu do LiveKit", sessao.id)
+        await self._fechar_sala_se_vazia(sala)
 
     def espectadores(self, sala: str) -> int:
         return len(self._espectadores.get(sala, ()))

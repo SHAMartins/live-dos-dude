@@ -235,6 +235,13 @@ class Repositorio:
         dados = dict(linha)
         return Sessao(**{k: v for k, v in dados.items() if k != "transmissor"}), dados["transmissor"]
 
+    async def ha_sessao_em_andamento_na_sala(self, sala: str) -> bool:
+        cursor = await self._db.execute(
+            "SELECT 1 FROM sessoes WHERE sala = ? AND estado IN ('solicitada', 'ativa') LIMIT 1", (sala,))
+        linha = await cursor.fetchone()
+        await cursor.close()
+        return linha is not None
+
     async def sessoes_ativas_na_sala(self, sala: str) -> list[tuple[Sessao, str]]:
         cursor = await self._db.execute(
             f"SELECT {_prefixar(_COLUNAS_SESSAO, 's')}, u.nome AS transmissor FROM sessoes s "

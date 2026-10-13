@@ -36,6 +36,43 @@ async def _participantes(ambiente, sala: str) -> dict[str, list]:
         return {p.identity: list(p.tracks) for p in resposta.participants}
 
 
+async def _salas(ambiente) -> list[str]:
+    async with api.LiveKitAPI("http://localhost:7880", ambiente.config.livekit_api_key,
+                              ambiente.config.livekit_api_secret.get_secret_value()) as lk:
+        return [r.name for r in (await lk.room.list_rooms(api.ListRoomsRequest())).rooms]
+
+
+async def test_parar_fecha_a_sala_e_desconecta_quem_ainda_assistia(ambiente, cliente_pareado):
+    from livekit import rtc
+
+    await cliente_pareado(publicar=True)
+    sessao = await ambiente.servico.transmitir(FULANO, PedidoTransmissao("fecha-sala", "480p", 15, 800))
+    assert "fecha-sala" in await _salas(ambiente)
+
+    acesso = await ambiente.servico.acesso_por_chave(sessao.chave_espectador)
+    espectador = rtc.Room()
+    caiu: asyncio.Future = asyncio.get_running_loop().create_future()
+    espectador.on("disconnected", lambda motivo: caiu.done() or caiu.set_result(motivo))
+    await espectador.connect(acesso.livekit_url, acesso.token)
+
+    await ambiente.servico.parar(FULANO)
+    motivo = await asyncio.wait_for(caiu, 5)                  # o espectador foi derrubado pela sala fechada
+    assert motivo == rtc.DisconnectReason.ROOM_DELETED
+    assert "fecha-sala" not in await _salas(ambiente)
+
+
+async def test_sala_continua_aberta_se_outra_transmissao_ainda_esta_nela(ambiente, cliente_pareado):
+    await cliente_pareado(publicar=True)
+    await ambiente.servico.transmitir(FULANO, PedidoTransmissao("sala-dividida", "480p", 15, 800))
+    # Outra pessoa transmitindo na mesma sala (registrada direto no banco).
+    await ambiente.repo.salvar_usuario(222, "Beltrano")
+    await ambiente.repo.criar_sessao("outra-sessao", 222, "sala-dividida", "720p", 30, 2500, "vp8", "chave-outra")
+    await ambiente.repo.atualizar_sessao("outra-sessao", "ativa")
+
+    await ambiente.servico.parar(FULANO)
+    assert "sala-dividida" in await _salas(ambiente)
+
+
 async def test_transmitir_publica_tela_no_livekit_e_parar_remove(ambiente, cliente_pareado):
     await cliente_pareado(publicar=True)
     sessao = await ambiente.servico.transmitir(FULANO, PedidoTransmissao("integracao", "480p", 15, 800))
