@@ -1,5 +1,5 @@
 ; Instalador do Live dos Dude (Inno Setup 6). Compile pelo empacotar.py, que passa a versão:
-;   ISCC.exe /DVersaoApp=0.1.0 instalador.iss
+;   ISCC.exe /DVersaoApp=<versão> instalador.iss
 ;
 ; Instala só para o usuário atual (sem administrador), em %LOCALAPPDATA%\Programs\LiveDosDude.
 ; O desinstalador aparece em Configurações > Aplicativos.
